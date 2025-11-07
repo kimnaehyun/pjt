@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<body>
+  <h1>Detail</h1>
+  <h2>{{ book.pk }} 번째 글</h2>
+  <hr>
+  <p>제목: {{ book.title }}</p>
+  <p>내용: {{ book.explanation }}</p>
+
+  <hr>
+  <a href="{% url "books:update" book.pk %}">수정하기</a><br>
+  <form action="{% url "books:delete" book.pk %}" method="POST">
+    {% csrf_token %}
+    <input type="submit" value="삭제하기">
+  </form>
+  <a href="{% url "books:index" %}">[메인 페이지로]</a>
+</body>
+{% endblock content %}

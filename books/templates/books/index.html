@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container">
+  <h3 class="display-4 fw-semibold my-3">메인 페이지</h3>
+  <hr>
+  {% for book in books %}
+    <div class="mb-3">
+      <p class="mb-1">책 번호: {{ book.pk }}</p>
+      <p class="mb-1">
+        책 제목:
+        <a href="{% url 'books:detail' book.pk %}">{{ book.title }}</a>
+      </p>
+      <p class="mb-0">책 내용: {{ book.explanation }}</p>
+    </div>
+    <hr>
+  {% empty %}
+    <p>게시글이 없습니다.</p>
+  {% endfor %}
+</div>
+{% endblock content %}
+
