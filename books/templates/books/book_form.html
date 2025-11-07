@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>CREATE</h1>
+<form action="{% url "books:create" %}" method="POST">
+  {% csrf_token %}
+  {{ form }}
+  <input type="submit">
+    </form>
+    <hr>
+    <a href="">[back]</a>
+{% endblock content %}
