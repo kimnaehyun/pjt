@@ -17,7 +17,7 @@
 </template>
 
 <script setup>
-import userImg from '@/assets/imges/userImg.png';
+import userImg from '@/assets/imges/userImgBlue.png';
 defineProps({
   userName: String,
   userEmail: String,

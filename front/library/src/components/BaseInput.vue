@@ -3,7 +3,7 @@
   <img
     v-if="imgSrc"
     :src="imgSrc"
-    alt=""
+    :alt="imgAlt"
     class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
   />
 
@@ -24,6 +24,7 @@
 defineProps({
   type: String,
   imgSrc: String,
+  imgAlt: String,
   msg: String,
 });
 </script>

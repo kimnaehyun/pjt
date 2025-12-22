@@ -8,12 +8,14 @@
 
     <div class="flex-1">
       <label class="block text-sm text-gray-600">{{ field }}</label>
-      <p class="text-gray-800 py-2">{{ value }}</p>
+      <BaseInput class="text-gray-800 py-2" :value="value" type="text" />
     </div>
   </div>
 </template>
 
 <script setup>
+import BaseInput from "./BaseInput.vue";
+
 const { imgSrc, imgAlt, field, value } = defineProps({
   imgSrc: String,
   imgAlt: String,
