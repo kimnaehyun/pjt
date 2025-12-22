@@ -1,5 +1,5 @@
 <template>
-  <button :class="wrapperClass" :type="type">
+  <button :class="wrapperClass" :type="type" @click="$emit('click')">
     <img v-if="imgSrc" :src="imgSrc" :alt="imgAlt" class="w-4 h-4 pr-2" />
     {{ value }}
   </button>
