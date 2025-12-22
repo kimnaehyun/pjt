@@ -18,22 +18,19 @@
 import InfoRow from './InfoRow.vue';
 import BaseInput from './BaseInput.vue';
 
-defineProps({
+const { imgSrc, imgAlt, field, value, type } = defineProps({
   imgSrc: String,
   imgAlt: String,
   field: String,
   value: String,
   type: {
     type: String,
-    default: 'info' 
+    default: 'info'
   }
 });
 
 const componentToShow = type === 'input' ? BaseInput : InfoRow;
-
-const componentProps = type === 'input'
-  ? { modelValue: value } 
-  : { value };           
+const componentProps = type === 'input' ? { modelValue: value } : { value };          
 </script>
 
 <style lang="scss" scoped>
