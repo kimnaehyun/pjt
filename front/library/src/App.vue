@@ -1,25 +1,21 @@
 <template>
-  <div class="container">
-    <div class="p-8 border border-black w-full">
-
-        <ProfileInfo />
-    </div>
-    
-  </div>
+   <!-- <LandingView /> -->
+    <!-- <SignUp /> -->
+    <!-- <MainView /> -->
+     <!-- <BookDetailView /> -->
+    <ProfileView />
 </template>
 
 <script setup>
-import ProfileHeader from './components/ProfileHeader.vue';
-import ProfileInfo from './components/ProfileInfo.vue';
 
+import LandingView from './views/LandingView.vue';
+import SignUp from './views/SignUp.vue';
+import MainView from './views/MainView.vue';
+import BookDetailView from './views/BookDetailView.vue';
+import ProfileView from './views/ProfileView.vue';
 
 </script>
 <style scoped>
 
-.container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
+
 </style>
