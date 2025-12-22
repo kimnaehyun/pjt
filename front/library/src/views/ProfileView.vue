@@ -33,13 +33,7 @@
         </div>
 
         <form class="space-y-6">
-          <ProfileInfo
-            v-for="info in infos"
-            :field="info.label"
-            :value="info.value"
-            :img-src="info.imgSrc"
-            :img-alt="info.imgAlt"
-          />
+          <RouterView />
         </form>
       </div>
     </div>
@@ -48,7 +42,7 @@
 
 <script setup>
 import ProfileHeader from "@/components/ProfileHeader.vue";
-import ProfileInfo from "@/components/ProfileInfo.vue";
+import { RouterView } from "vue-router";
 import { ref } from "vue";
 import userImg from "@/assets/imges/userImgBlue.png";
 const infos = ref([
