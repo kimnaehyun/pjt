@@ -2,7 +2,7 @@
 <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center px-4 py-12">
   <div class="max-w-md w-full">
     <!-- 뒤로가기 버튼 -->
-    <button class="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
+    <button class="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6" @click="goLanding">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" 
            viewBox="0 0 24 24" fill="none" stroke="currentColor" 
            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" 
@@ -18,7 +18,7 @@
         <h2 class="text-center mb-8 text-gray-800">회원가입</h2>
         
         <!-- 회원가입 폼 -->
-        <form class="space-y-6">
+        <form class="space-y-6" @submit.prevent="onSubmit">
             <!-- 이름 -->
             <div>
                 <label for="name" class="block text-sm mb-2 text-gray-700">이름</label>
@@ -77,7 +77,7 @@
       <!-- 로그인 안내 -->
       <div class="mt-6 text-center text-sm text-gray-600">
         <p>이미 계정이 있으신가요?</p>
-        <button class="text-blue-600 hover:underline mt-1">로그인하기</button>
+        <button class="text-blue-600 hover:underline mt-1" @click="goLanding">로그인하기</button>
       </div>
     </div>
   </div>
@@ -92,7 +92,18 @@ import userImg from '@/assets/imges/userImgBlack.png';
 import mailImg from '@/assets/imges/msgImg.png';
 import passwordImg from '@/assets/imges/password.png';
 import BaseButton from '@/components/BaseButton.vue';
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
+
+const goLanding = () => {
+  router.back()
+};
+const onSubmit = () => {
+  // TODO: 회원가입 폼 제출 처리 로직 / API 호출
+  router.push({ name: "main" });
+  console.log('회원가입 폼이 제출되었습니다.');
+};
 </script>
 
 <style lang="scss" scoped>
