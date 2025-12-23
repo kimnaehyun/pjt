@@ -8,6 +8,7 @@
   />
 
   <input
+    @input="$emit('update:modelValue', $event.target.value)"
     :type="type"
     :class="imgSrc ? 'pl-11' : 'pl-4'"
     class="w-full pr-4 py-3 border border-gray-300 rounded-lg
@@ -26,7 +27,10 @@ defineProps({
   imgSrc: String,
   imgAlt: String,
   msg: String,
+   modelValue: String,
 });
+
+defineEmits(['update:modelValue'])
 </script>
 
 <style lang="scss" scoped>
