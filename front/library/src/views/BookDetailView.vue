@@ -57,7 +57,7 @@
         />
         <BaseButton 
           type="submit" 
-          class="bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors px-6 py-2" 
+          class="bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors px-6 py-2 flex-1" 
           :img-src="send"
           img-alt="작성"
           value="작성" 
@@ -97,7 +97,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { bookAPI, reviewAPI } from '@/api'
@@ -117,7 +117,7 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
-const book = ref(null)
+const book = ref([])
 const loading = ref(false)
 const newReviewContent = ref('')
 
@@ -144,8 +144,10 @@ const handleSubmitReview = async () => {
       content: newReviewContent.value
     })
     newReviewContent.value = ''
-    // 리뷰 작성 후 책 정보 다시 로드
-    await fetchBook()
+    // Fallback: if WebSocket is not connected, reload book data
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      await fetchBook()
+    }
   } catch (error) {
     console.error('Failed to create review:', error)
     alert('댓글 작성에 실패했습니다.')
@@ -157,7 +159,10 @@ const handleDeleteReview = async (reviewId) => {
   
   try {
     await reviewAPI.deleteReview(reviewId)
-    await fetchBook()
+    // Fallback: if WebSocket is not connected, reload book data
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      await fetchBook()
+    }
   } catch (error) {
     console.error('Failed to delete review:', error)
     alert('댓글 삭제에 실패했습니다.')
@@ -182,7 +187,52 @@ const goBack = () => {
 
 onMounted(() => {
   fetchBook()
+  connectWS()
 })
+
+onUnmounted(() => {
+  try { ws?.close() } catch (e) {}
+})
+
+// WebSocket for real-time reviews
+let ws = null
+const connectWS = () => {
+  try {
+    // Use backend API port for WebSocket (currently 8001)
+    const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsUrl = `${wsProtocol}//127.0.0.1:8001/ws/books/${route.params.id}/`
+    console.log('Attempting WS connection:', wsUrl)
+    ws = new WebSocket(wsUrl)
+
+    ws.onopen = () => {
+      console.log('WebSocket connected successfully')
+    }
+
+    ws.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        console.log('WS message received:', data)
+        if (data.type === 'review.created' && data.review) {
+          book.value.reviews = [data.review, ...(book.value.reviews || [])]
+          book.value.review_count = (book.value.review_count || 0) + 1
+        } else if (data.type === 'review.deleted') {
+          book.value.reviews = (book.value.reviews || []).filter(r => r.id !== data.review_id)
+          book.value.review_count = Math.max(0, (book.value.review_count || 1) - 1)
+        }
+      } catch (err) {
+        console.error('WS message parse error', err)
+      }
+    }
+
+    ws.onclose = () => {
+      console.log('WebSocket disconnected, retrying in 2s...')
+      setTimeout(connectWS, 2000)
+    }
+    ws.onerror = (err) => console.error('WebSocket error', err)
+  } catch (err) {
+    console.error('Failed to connect WS', err)
+  }
+}
 </script>
 
 <style lang="scss" scoped>
