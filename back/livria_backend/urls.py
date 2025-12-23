@@ -18,9 +18,14 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import HttpResponse
 
+def healthz(request):
+    return HttpResponse("ok")
 
 urlpatterns = [
+    path("healthz", healthz),
+
     path('admin/', admin.site.urls),
 
     # 계정 관련 (signup, login, me, update)
