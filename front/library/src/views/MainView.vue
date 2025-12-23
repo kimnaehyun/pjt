@@ -12,6 +12,14 @@
             placeholder="책 제목, 저자, 카테고리로 검색"
             class=" border-gray-300 focus:border-blue-600 focus:outline-none shadow-lg"
           />
+          <button
+            type="button"
+            class="px-4 py-2 rounded-full transition-colors"
+            :class="isAiMode ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'"
+            @click="aiSearch"
+          >
+            AI
+          </button>
           <BaseButton
             type="submit"
             class="bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors px-6 py-2 flex-1"
@@ -79,12 +87,13 @@
 import BaseButton from '@/components/BaseButton.vue';
 import BaseInput from '@/components/BaseInput.vue';
 import BookCard from '@/components/BookCard.vue';
-import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { onMounted, onBeforeUnmount, ref, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { bookAPI, metaAPI } from '@/api';
 
 const router = useRouter();
 const keyword = ref('')
+const isAiMode = ref(false)
 
 const isLoading = ref(true)
 const categories = ref([])
@@ -99,12 +108,29 @@ const visibleSlots = ref({}) // { [categoryId]: number }
 const search = () => {
   if (!keyword.value?.trim()) return
 
+  if (isAiMode.value) {
+    const prompt = String(keyword.value || '').trim()
+    router.push({ name: 'aiSearchResult', query: { prompt } })
+    return
+  }
+
   router.push({
   name: 'searchResult',
   params: {
     search: keyword.value,
   },
 });
+}
+
+const aiSearch = () => {
+  const prompt = String(keyword.value || '').trim()
+  // If there's a prompt, run AI search immediately.
+  if (prompt) {
+    router.push({ name: 'aiSearchResult', query: { prompt } })
+    return
+  }
+  // Otherwise, treat as a mode toggle (activate/deactivate AI mode).
+  isAiMode.value = !isAiMode.value
 }
 
 const fetchBooks = async () => {
@@ -173,14 +199,16 @@ const booksByCategory = (categoryId) => {
 
 const setViewport = (categoryId, el) => {
   if (!el) return
+  if (viewports.value?.[categoryId] === el) return
   viewports.value = { ...viewports.value, [categoryId]: el }
-  computeMetrics(categoryId)
+  nextTick(() => computeMetrics(categoryId))
 }
 
 const setTrack = (categoryId, el) => {
   if (!el) return
+  if (tracks.value?.[categoryId] === el) return
   tracks.value = { ...tracks.value, [categoryId]: el }
-  computeMetrics(categoryId)
+  nextTick(() => computeMetrics(categoryId))
 }
 
 const computeMetrics = (categoryId) => {
@@ -194,10 +222,16 @@ const computeMetrics = (categoryId) => {
   const gap = parseFloat(style.columnGap || style.gap || '0') || 0
   const step = item.getBoundingClientRect().width + gap
   if (!step) return
-  steps.value = { ...steps.value, [categoryId]: step }
+  const prevStep = steps.value?.[categoryId]
+  if (prevStep !== step) {
+    steps.value = { ...steps.value, [categoryId]: step }
+  }
 
   const slots = Math.max(1, Math.floor((viewport.clientWidth + gap) / step))
-  visibleSlots.value = { ...visibleSlots.value, [categoryId]: slots }
+  const prevSlots = visibleSlots.value?.[categoryId]
+  if (prevSlots !== slots) {
+    visibleSlots.value = { ...visibleSlots.value, [categoryId]: slots }
+  }
 }
 
 const maxStartIndex = (categoryId) => {
@@ -210,7 +244,16 @@ const moveCategory = (categoryId, direction) => {
   computeMetrics(categoryId)
   const maxIdx = maxStartIndex(categoryId)
   const cur = carouselIndex.value?.[categoryId] ?? 0
-  const next = Math.min(maxIdx, Math.max(0, cur + direction))
+  if (maxIdx <= 0) {
+    return
+  }
+
+  let next
+  if (direction > 0) {
+    next = cur >= maxIdx ? 0 : cur + 1
+  } else {
+    next = cur <= 0 ? maxIdx : cur - 1
+  }
   carouselIndex.value = { ...carouselIndex.value, [categoryId]: next }
 }
 

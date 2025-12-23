@@ -49,7 +49,8 @@ export const bookAPI = {
   getBestSellers: () => api.get('/books/best-sellers/'),
   getTopRecommended: () => api.get('/books/top-recommended/'),
   getAgeBased: (age) => api.get('/books/age-based/', { params: { age } }),
-  getSimilar: (id) => api.get(`/books/${id}/similar/`)
+  getSimilar: (id) => api.get(`/books/${id}/similar/`),
+  aiSearch: (params) => api.get('/books/ai-search/', { params })
 }
 
 // 리뷰 API
@@ -71,7 +72,7 @@ export const userBookAPI = {
 
 // 추천 API
 export const recommendAPI = {
-  getPersonalized: () => api.get('/recommendations/me/')
+  getPersonalized: (params) => api.get('/recommendations/me/', { params })
 }
 
 // 카테고리/장르/작가 API

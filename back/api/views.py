@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions, filters, status
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Q
 
 from .models import Book, Author, Category, Genre, Review
 from .serializers import (
@@ -19,6 +20,8 @@ from django.conf import settings
 import re
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+import hashlib
+import random
 
 
 def _looks_like_openai_key(value: str | None) -> bool:
@@ -46,9 +49,127 @@ class BookViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'author__name']
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve', 'similar', 'best_sellers', 'top_recommended', 'age_based']:
+        if self.action in ['list', 'retrieve', 'similar', 'best_sellers', 'top_recommended', 'age_based', 'ai_search']:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
+
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny], url_path='ai-search')
+    def ai_search(self, request):
+        """AI prompt 기반으로 DB 책 검색.
+
+        GET /api/books/ai-search/?prompt=...&nonce=...
+        Returns: list[Book]
+        """
+        prompt_in = str(request.query_params.get('prompt') or '').strip()
+        if not prompt_in:
+            return Response([], status=status.HTTP_200_OK)
+
+        nonce = request.query_params.get('nonce')
+        base_qs = Book.objects.select_related('author', 'category', 'genre').all()
+
+        # Fallback: plain keyword search over DB (title/author/genre/category)
+        def _fallback_list():
+            tokens = [t for t in re.split(r"\s+", prompt_in) if t]
+            q = (
+                Q(title__icontains=prompt_in)
+                | Q(author__name__icontains=prompt_in)
+                | Q(genre__name__icontains=prompt_in)
+                | Q(category__name__icontains=prompt_in)
+            )
+            # also OR token queries to widen matches
+            for t in tokens[:6]:
+                q |= Q(title__icontains=t) | Q(author__name__icontains=t)
+
+            qs = base_qs.filter(q)
+            if nonce:
+                ids = list(qs.values_list('id', flat=True))
+                if not ids:
+                    return []
+                # Deterministic shuffle per (prompt, nonce) without using user data.
+                seed_src = f"ai-search:{prompt_in}:{nonce}".encode('utf-8')
+                seed = int(hashlib.sha256(seed_src).hexdigest()[:16], 16)
+                rng = random.Random(seed)
+                pick_count = min(40, len(ids))
+                picked_ids = rng.sample(ids, pick_count)
+                books_map = base_qs.in_bulk(picked_ids)
+                picked = [books_map.get(i) for i in picked_ids if books_map.get(i) is not None]
+                return BookSerializer(picked, many=True, context={'request': request}).data
+
+            qs = qs.order_by('-global_recommend_count', 'id')[:40]
+            return BookSerializer(qs, many=True, context={'request': request}).data
+
+        model = getattr(settings, 'OPENAI_MODEL', None) or 'gpt-5-mini'
+        openai_api_key = getattr(settings, 'OPENAI_API_KEY', None)
+        gms_key = getattr(settings, 'GMS_KEY', None)
+        base_url = getattr(settings, 'OPENAI_BASE_URL', None)
+
+        DEFAULT_GMS_BASE_URL = 'https://gms.ssafy.io/gmsapi/api.openai.com/v1'
+
+        if not base_url:
+            if gms_key:
+                base_url = DEFAULT_GMS_BASE_URL
+            elif openai_api_key and not _looks_like_openai_key(openai_api_key):
+                base_url = DEFAULT_GMS_BASE_URL
+
+        if base_url == DEFAULT_GMS_BASE_URL:
+            api_key = gms_key or openai_api_key
+        else:
+            api_key = openai_api_key or gms_key
+
+        if not api_key:
+            return Response(_fallback_list())
+
+        try:
+            from openai import OpenAI
+        except ModuleNotFoundError:
+            return Response(_fallback_list())
+
+        client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
+
+        # Ask model to output search keywords or titles only.
+        # NOTE: Per product decision, do not incorporate user profile/favorites/read history here.
+        ai_prompt = (
+            "You are a helpful assistant that maps a user's natural language book request to search keywords. "
+            "Return up to 10 short keywords or book titles, one per line, and nothing else.\n\n"
+        )
+        if nonce:
+            ai_prompt += f"Nonce: {nonce}\n"
+        ai_prompt += f"User request: {prompt_in}\n"
+
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[{'role': 'user', 'content': ai_prompt}],
+                temperature=0.9,
+                max_completion_tokens=200,
+            )
+            text = (resp.choices[0].message.content or '').strip()
+        except Exception:
+            return Response(_fallback_list())
+
+        terms = []
+        for line in text.splitlines():
+            s = line.strip()
+            if not s:
+                continue
+            s = re.sub(r'^[\d\)\.\-\s]+', '', s).strip()
+            if len(s) < 2:
+                continue
+            terms.append(s)
+            if len(terms) >= 10:
+                break
+
+        if not terms:
+            return Response(_fallback_list())
+
+        # Convert terms to DB query
+        q = Q()
+        for t in terms:
+            q |= Q(title__icontains=t) | Q(author__name__icontains=t) | Q(genre__name__icontains=t) | Q(category__name__icontains=t)
+
+        qs = base_qs.filter(q).distinct().order_by('-global_recommend_count', 'id')[:40]
+        data = BookSerializer(qs, many=True, context={'request': request}).data
+        return Response(data)
 
     @action(detail=True, methods=['get'], permission_classes=[AllowAny], url_path='similar')
     def similar(self, request, pk=None):
@@ -232,10 +353,13 @@ def recommend_by_profile(request):
     interests = getattr(user, 'interests', '') or ''
 
     # Build prompt for OpenAI
+    nonce = request.query_params.get('nonce')
     prompt = (
         "You are a helpful book recommender. Given a user's profile and lists of books they've favorited and read, "
         "suggest up to 8 book titles that this user would enjoy. Return the recommendations as a numbered list of titles only.\n\n"
     )
+    if nonce:
+        prompt += f"Nonce: {nonce}\n"
     prompt += f"Occupation: {occupation}\n"
     prompt += f"Gender: {gender}\n"
     prompt += f"Interests: {interests}\n\n"
@@ -274,7 +398,22 @@ def recommend_by_profile(request):
     # If OpenAI is not configured (common in local/dev), return a safe fallback list
     # so the frontend can keep functioning.
     def _fallback_list():
-        qs = Book.objects.exclude(id__in=exclude_ids).order_by('-global_recommend_count', 'id')[:8]
+        qs = Book.objects.exclude(id__in=exclude_ids)
+        # If a nonce is provided, return a shuffled sample so "다시 추천" yields different results.
+        if nonce:
+            candidate_ids = list(qs.values_list('id', flat=True))
+            if not candidate_ids:
+                return []
+            seed_src = f"{user.id}:{nonce}".encode('utf-8')
+            seed = int(hashlib.sha256(seed_src).hexdigest()[:16], 16)
+            rng = random.Random(seed)
+            pick_count = min(8, len(candidate_ids))
+            picked_ids = rng.sample(candidate_ids, pick_count)
+            books_map = Book.objects.select_related('author', 'category', 'genre').in_bulk(picked_ids)
+            picked = [books_map.get(i) for i in picked_ids if books_map.get(i) is not None]
+            return BookSerializer(picked, many=True, context={'request': request}).data
+
+        qs = qs.order_by('-global_recommend_count', 'id')[:8]
         return BookSerializer(qs, many=True, context={'request': request}).data
 
     if not api_key:
@@ -291,6 +430,7 @@ def recommend_by_profile(request):
         resp = client.chat.completions.create(
             model=model,
             messages=[{'role': 'user', 'content': prompt}],
+            temperature=0.9,
             max_completion_tokens=300,
         )
         text = (resp.choices[0].message.content or '').strip()

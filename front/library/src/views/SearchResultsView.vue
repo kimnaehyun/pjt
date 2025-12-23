@@ -30,6 +30,7 @@ import { bookAPI, metaAPI } from '@/api'
 const route = useRoute()
 const search = computed(() => route.params.search)
 const genreId = computed(() => route.params.genreId)
+const aiPrompt = computed(() => route.query.prompt)
 
 const genreName = ref('')
 const genreNameById = ref({})
@@ -52,6 +53,8 @@ const ensureGenresLoaded = async () => {
 }
 
 const title = computed(() => {
+    const p = String(aiPrompt.value || '').trim()
+    if (p) return `"${p}" AI 검색 결과`
     const g = String(genreId.value || '').trim()
     if (g) {
         const name = String(genreName.value || '').trim()
@@ -67,6 +70,13 @@ const isLoading = ref(false)
 const fetchBooks = async () => {
         isLoading.value = true
         try {
+            const p = String(aiPrompt.value || '').trim()
+            if (p) {
+                genreName.value = ''
+                const response = await bookAPI.aiSearch({ prompt: p, nonce: Date.now() })
+                books.value = Array.isArray(response.data) ? response.data : []
+                return
+            }
             const g = String(genreId.value || '').trim()
             if (g) {
                 await ensureGenresLoaded()
@@ -90,7 +100,7 @@ onMounted(() => {
     fetchBooks()
 })
 
-watch([search, genreId], () => {
+watch([search, genreId, aiPrompt], () => {
     fetchBooks()
 })
 </script>

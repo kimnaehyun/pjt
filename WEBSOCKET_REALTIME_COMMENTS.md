@@ -360,7 +360,7 @@ npm install
 ```bash
 # 터미널 1: 백엔드 (ASGI 서버)
 cd back/back
-uvicorn livria_backend.asgi:application --host 127.0.0.1 --port 8001
+uvicorn livria_backend.asgi:application --host 127.0.0.1 --port 8000
 ```
 
 ```bash

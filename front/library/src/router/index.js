@@ -35,6 +35,11 @@ const router = createRouter({
       props: true,
     },
     {
+      path: "/main/ai",
+      name: "aiSearchResult",
+      component: SearchResultsView,
+    },
+    {
       path: "/main/:search",
       name: "searchResult",
       component: SearchResultsView,

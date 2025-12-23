@@ -17,7 +17,17 @@
       <section>
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-gray-800">AI 추천 도서</h3>
-          <p class="text-sm text-gray-500">최대 8권</p>
+          <div class="flex items-center gap-3">
+            <p class="text-sm text-gray-500">최대 8권</p>
+            <button
+              type="button"
+              class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="isAiLoading"
+              @click="fetchAiBooks"
+            >
+              다시 추천
+            </button>
+          </div>
         </div>
 
         <div v-if="isAiLoading" class="flex items-center justify-center py-10">
@@ -146,7 +156,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import BookCard from '@/components/BookCard.vue'
@@ -169,21 +179,27 @@ const aiBooks = ref([])
 const isAiLoading = ref(false)
 
 const carouselIndex = ref({}) // { [sectionId]: number }
-const tracks = ref({}) // { [sectionId]: HTMLElement }
-const viewports = ref({}) // { [sectionId]: HTMLElement }
+// IMPORTANT: DOM element references must be non-reactive.
+// If we store them in refs and mutate during render via function refs,
+// Vue will re-render and the refs will run again -> recursive update loop.
+const tracks = Object.create(null) // { [sectionId]: HTMLElement }
+const viewports = Object.create(null) // { [sectionId]: HTMLElement }
 const steps = ref({}) // { [sectionId]: number }
 const visibleSlots = ref({}) // { [sectionId]: number }
 
 const setViewport = (sectionId, el) => {
   if (!el) return
-  viewports.value = { ...viewports.value, [sectionId]: el }
-  computeMetrics(sectionId)
+  if (viewports[sectionId] === el) return
+  viewports[sectionId] = el
+  // Defer metrics to after the DOM settles for this render.
+  nextTick(() => computeMetrics(sectionId))
 }
 
 const setTrack = (sectionId, el) => {
   if (!el) return
-  tracks.value = { ...tracks.value, [sectionId]: el }
-  computeMetrics(sectionId)
+  if (tracks[sectionId] === el) return
+  tracks[sectionId] = el
+  nextTick(() => computeMetrics(sectionId))
 }
 
 const listBySection = (sectionId) => {
@@ -194,8 +210,8 @@ const listBySection = (sectionId) => {
 }
 
 const computeMetrics = (sectionId) => {
-  const track = tracks.value?.[sectionId]
-  const viewport = viewports.value?.[sectionId]
+  const track = tracks?.[sectionId]
+  const viewport = viewports?.[sectionId]
   if (!track || !viewport) return
   const item = track.querySelector('.book-item')
   if (!item) return
@@ -204,10 +220,16 @@ const computeMetrics = (sectionId) => {
   const gap = parseFloat(style.columnGap || style.gap || '0') || 0
   const step = item.getBoundingClientRect().width + gap
   if (!step) return
-  steps.value = { ...steps.value, [sectionId]: step }
+  const prevStep = steps.value?.[sectionId]
+  if (prevStep !== step) {
+    steps.value = { ...steps.value, [sectionId]: step }
+  }
 
   const slots = Math.max(1, Math.floor((viewport.clientWidth + gap) / step))
-  visibleSlots.value = { ...visibleSlots.value, [sectionId]: slots }
+  const prevSlots = visibleSlots.value?.[sectionId]
+  if (prevSlots !== slots) {
+    visibleSlots.value = { ...visibleSlots.value, [sectionId]: slots }
+  }
 }
 
 const maxStartIndex = (sectionId) => {
@@ -220,7 +242,16 @@ const move = (sectionId, direction) => {
   computeMetrics(sectionId)
   const maxIdx = maxStartIndex(sectionId)
   const cur = carouselIndex.value?.[sectionId] ?? 0
-  const next = Math.min(maxIdx, Math.max(0, cur + direction))
+  if (maxIdx <= 0) {
+    return
+  }
+
+  let next
+  if (direction > 0) {
+    next = cur >= maxIdx ? 0 : cur + 1
+  } else {
+    next = cur <= 0 ? maxIdx : cur - 1
+  }
   carouselIndex.value = { ...carouselIndex.value, [sectionId]: next }
 }
 
@@ -247,7 +278,7 @@ const clampIndexes = () => {
 const fetchAiBooks = async () => {
   isAiLoading.value = true
   try {
-    const res = await recommendAPI.getPersonalized()
+    const res = await recommendAPI.getPersonalized({ nonce: Date.now() })
     aiBooks.value = Array.isArray(res.data) ? res.data : []
     if (!(carouselIndex.value?.ai >= 0)) {
       carouselIndex.value = { ...carouselIndex.value, ai: 0 }

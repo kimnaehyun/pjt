@@ -90,9 +90,12 @@
     </div>
 
     <!-- Similar books (full width) -->
-    <div v-if="similarBooks4.length" class="mt-10 border-t pt-6">
+    <div v-if="book" class="mt-10 border-t pt-6">
       <h3 class="mb-4 text-gray-800">유사한 책</h3>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-5">
+
+      <p v-if="!similarBooks4.length" class="text-gray-600 text-sm">추천 도서가 없습니다.</p>
+
+      <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-5">
         <RouterLink
           v-for="b in similarBooks4"
           :key="b.id"
