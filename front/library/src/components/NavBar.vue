@@ -8,6 +8,7 @@
         <!-- Genre hamburger -->
         <div class="relative">
           <button
+          v-if="authStore.isAuthenticated"
             type="button"
             class="p-2 rounded-lg text-gray-700 hover:text-blue-600 transition-colors"
             aria-label="장르 메뉴"
@@ -51,37 +52,38 @@
         </div>
 
         <!-- Logo -->
-        <a
-          href="/main"
-          data-discover="true"
-          class="flex items-center gap-2 hover:opacity-80 transition-opacity"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            width="24"
-            height="24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-            class="lucide lucide-book-open w-8 h-8 text-blue-600"
-          >
-            <path d="M12 7v14" />
-            <path
-              d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5
-                 a4 4 0 0 1 4 4
-                 a4 4 0 0 1 4-4h5
-                 a1 1 0 0 1 1 1v13
-                 a1 1 0 0 1-1 1h-6
-                 a3 3 0 0 0-3 3
-                 a3 3 0 0 0-3-3z"
-            />
-          </svg>
-          <span class="text-blue-600">북스토어</span>
-        </a>
+       <!-- Logo -->
+<button
+  type="button"
+  @click="goLogo"
+  class="flex items-center gap-2 hover:opacity-80 transition-opacity"
+>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    width="24"
+    height="24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class="w-8 h-8 text-blue-600"
+  >
+    <path d="M12 7v14" />
+    <path
+      d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5
+         a4 4 0 0 1 4 4
+         a4 4 0 0 1 4-4h5
+         a1 1 0 0 1 1 1v13
+         a1 1 0 0 1-1 1h-6
+         a3 3 0 0 0-3 3
+         a3 3 0 0 0-3-3z"
+    />
+  </svg>
+  <span class="text-blue-600">북스토어</span>
+</button>
+
       </div>
 
       <!-- Right menu -->
@@ -110,7 +112,7 @@
             <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
           </svg>
-          <span class="hidden sm:inline">사용자님</span>
+          <span class="hidden sm:inline">{{ authStore.user?.name  }}</span>
         </a>
 
         <!-- Logout -->
@@ -138,16 +140,6 @@
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
           </svg>
           <span class="hidden sm:inline">로그아웃</span>
-        </button>
-
-        <!-- Login (when logged out) -->
-        <button
-          v-else
-          type="button"
-          class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          @click="goLogin"
-        >
-          <span class="hidden sm:inline">로그인</span>
         </button>
 
       </div>
@@ -178,6 +170,14 @@
       genres.value = []
     }
   }
+
+const goLogo = () => {
+  if (authStore.isAuthenticated) {
+    router.push({ name: 'main' })
+  } else {
+    return
+  }
+}
 
   const onGenreChange = () => {
     const id = String(selectedGenreId.value || '').trim()
