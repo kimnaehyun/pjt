@@ -8,27 +8,32 @@
   />
 
   <input
-    @input="$emit('update:modelValue', $event.target.value)"
     :type="type"
+    :value="modelValue"
+    @input="$emit('update:modelValue', $event.target.value)"
     :class="imgSrc ? 'pl-11' : 'pl-4'"
     class="w-full pr-4 py-3 border border-gray-300 rounded-lg
            focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
-    :placeholder="msg"
+    :placeholder="msg || placeholder"
   />
 </div>
-    
-  </input>
 </template>
 
 <script setup>
-
 defineProps({
-  type: String,
+  type: {
+    type: String,
+    default: 'text'
+  },
+  modelValue: {
+    type: [String, Number],
+    default: ''
+  },
   imgSrc: String,
   imgAlt: String,
   msg: String,
-   modelValue: String,
-});
+  placeholder: String
+})
 
 defineEmits(['update:modelValue'])
 </script>

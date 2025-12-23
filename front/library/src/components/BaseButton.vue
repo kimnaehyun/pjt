@@ -1,12 +1,12 @@
 <template>
-  <button :class="wrapperClass" :type="type" @click="$emit('click')">
-    <img v-if="imgSrc" :src="imgSrc" :alt="imgAlt" class="w-4 h-4 pr-2" />
-    {{ value }}
-  </button>
+    <div :class="wrapperClass">
+        <img v-if="imgSrc" :src="imgSrc" :alt="imgAlt" class="w-4 h-4 pr-2">
+        <input :type="type" :value="value"/>
+    </div>
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed } from 'vue'
 
 const props = defineProps({
   type: String,
@@ -15,14 +15,16 @@ const props = defineProps({
   imgAlt: String,
   className: {
     type: String,
-    default: "",
+    default: '',
   },
-});
+})
 
 const wrapperClass = computed(() => [
-  "w-full py-3 border-2 rounded-lg flex items-center justify-center",
+  'w-full py-3 border-2 rounded-lg flex items-center justify-center',
   props.className,
-]);
+])
 </script>
 
-<style scoped></style>
+<style scoped>
+
+</style>

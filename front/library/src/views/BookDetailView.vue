@@ -1,6 +1,6 @@
 <template>
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <button class="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
+  <button @click="goBack" class="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
       class="lucide lucide-arrow-left w-5 h-5" aria-hidden="true">
@@ -10,43 +10,86 @@
     뒤로가기
   </button>
 
-  <div class="bg-white rounded-xl shadow-lg p-8">
+  <div v-if="loading" class="text-center py-12">
+    <p class="text-gray-600">도서 정보를 불러오는 중...</p>
+  </div>
+
+  <div v-else-if="book" class="bg-white rounded-xl shadow-lg p-8">
     <div class="grid md:grid-cols-[300px,1fr] gap-8">
-      <BookCard />
+      <!-- 책 표지 -->
+      <div>
+        <img :src="book.cover_url || defaultCover" :alt="book.title" @error="onCoverError" class="w-full rounded-lg shadow-md" />
+      </div>
+      
+      <!-- 책 정보 -->
+      <div>
+        <h1 class="text-3xl font-bold mb-4 text-gray-800">{{ book.title }}</h1>
+        <div class="space-y-2 mb-6">
+          <p class="text-gray-600"><span class="font-semibold">저자:</span> {{ book.author?.name }}</p>
+          <p class="text-gray-600"><span class="font-semibold">출판사:</span> {{ book.publisher }}</p>
+          <p class="text-gray-600"><span class="font-semibold">카테고리:</span> {{ book.category?.name }}</p>
+          <p class="text-gray-600"><span class="font-semibold">장르:</span> {{ book.genre?.name }}</p>
+          <p class="text-gray-600"><span class="font-semibold">출판일:</span> {{ book.pub_date }}</p>
+        </div>
+
         <!-- 책 소개 -->
         <div class="border-t pt-6">
-          <h3 class="mb-4 text-gray-800">책 소개</h3>
+          <h3 class="mb-4 text-gray-800 font-semibold">책 소개</h3>
           <p class="text-gray-700 leading-relaxed">
-            당신이 잠든 사이 펼쳐지는 가장 특별한 꿈 이야기. 달러구트 꿈 백화점에서 일하게 된 페니의 특별한 여정을
-            그린 판타지 소설입니다. 꿈을 판매하는 백화점이라는 독특한 설정과 따뜻한 이야기로 많은 독자들의 사랑을 받고 있습니다.
+            {{ book.description || '책 소개 정보가 없습니다.' }}
           </p>
         </div>
+      </div>
     </div>
   </div>
 
   <!-- 댓글 섹션 -->
-  <div class="mt-8 bg-white rounded-xl shadow-lg p-8">
-    <h2 class="mb-6 text-gray-800">댓글 (0)</h2>
+  <div v-if="book" class="mt-8 bg-white rounded-xl shadow-lg p-8">
+    <h2 class="mb-6 text-gray-800 font-semibold">댓글 ({{ book.review_count || 0 }})</h2>
 
-    <form class="mb-8">
-  <div class="flex items-center gap-2">
-    <BaseInput 
-      type="text" 
-      placeholder="책 제목, 저자, 카테고리로 검색" 
-      class=" border-gray-300 focus:border-blue-600 focus:outline-none shadow-lg"
-    />
-    <BaseButton 
-      type="submit" 
-      class="bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors px-6 py-2 flex-1" 
-      :img-src="send"
-      img-alt="작성"
-      value="작성" 
-    />
-    </div>
+    <form v-if="isAuthenticated" @submit.prevent="handleSubmitReview" class="mb-8">
+      <div class="flex items-center gap-2">
+        <BaseInput 
+          v-model="newReviewContent"
+          type="text" 
+          placeholder="댓글을 작성해주세요" 
+          class="border-gray-300 focus:border-blue-600 focus:outline-none shadow-lg"
+        />
+        <BaseButton 
+          type="submit" 
+          class="bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors px-6 py-2" 
+          :img-src="send"
+          img-alt="작성"
+          value="작성" 
+        />
+      </div>
     </form>
 
+    <div v-else class="mb-8 text-center py-4 bg-gray-50 rounded-lg">
+      <p class="text-gray-600">댓글을 작성하려면 로그인이 필요합니다.</p>
+    </div>
+
     <div class="space-y-4">
-      <p class="text-center text-gray-500 py-8">아직 댓글이 없습니다.</p>
+      <div v-if="!book.reviews || book.reviews.length === 0" class="text-center text-gray-500 py-8">
+        아직 댓글이 없습니다.
+      </div>
+      
+      <div v-else v-for="review in book.reviews" :key="review.id" 
+           class="border-b pb-4 last:border-b-0">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="font-semibold text-gray-800">{{ review.user_nickname || review.user }}</p>
+            <p class="text-sm text-gray-500">{{ formatDate(review.created_at) }}</p>
+          </div>
+          <button 
+            v-if="canDeleteReview(review)" 
+            @click="handleDeleteReview(review.id)"
+            class="text-red-600 hover:text-red-800 text-sm">
+            삭제
+          </button>
+        </div>
+        <p class="mt-2 text-gray-700">{{ review.content }}</p>
+      </div>
     </div>
   </div>
 </div>
@@ -54,11 +97,92 @@
 </template>
 
 <script setup>
-import BaseButton from '@/components/BaseButton.vue';
-import BaseInput from '@/components/BaseInput.vue';
-import BookCard from '@/components/BookCard.vue';
-import send from '@/assets/imges/send.png';
+import { ref, onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { bookAPI, reviewAPI } from '@/api'
+import BaseButton from '@/components/BaseButton.vue'
+import BaseInput from '@/components/BaseInput.vue'
+import send from '@/assets/imges/send.png'
 
+const defaultCover = 'https://via.placeholder.com/300x400?text=No+Image'
+
+const onCoverError = (e) => {
+  if (e?.target?.src && e.target.src !== defaultCover) {
+    e.target.src = defaultCover
+  }
+}
+
+const router = useRouter()
+const route = useRoute()
+const authStore = useAuthStore()
+
+const book = ref(null)
+const loading = ref(false)
+const newReviewContent = ref('')
+
+const isAuthenticated = computed(() => authStore.isAuthenticated)
+
+const fetchBook = async () => {
+  try {
+    loading.value = true
+    const response = await bookAPI.getBook(route.params.id)
+    book.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch book:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleSubmitReview = async () => {
+  if (!newReviewContent.value.trim()) return
+  
+  try {
+    await reviewAPI.createReview({
+      book: book.value.id,
+      content: newReviewContent.value
+    })
+    newReviewContent.value = ''
+    // 리뷰 작성 후 책 정보 다시 로드
+    await fetchBook()
+  } catch (error) {
+    console.error('Failed to create review:', error)
+    alert('댓글 작성에 실패했습니다.')
+  }
+}
+
+const handleDeleteReview = async (reviewId) => {
+  if (!confirm('정말 삭제하시겠습니까?')) return
+  
+  try {
+    await reviewAPI.deleteReview(reviewId)
+    await fetchBook()
+  } catch (error) {
+    console.error('Failed to delete review:', error)
+    alert('댓글 삭제에 실패했습니다.')
+  }
+}
+
+const canDeleteReview = (review) => {
+  return authStore.user && (review.user === authStore.user.username || review.user_id === authStore.user.id)
+}
+
+const formatDate = (dateString) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('ko-KR') + ' ' + date.toLocaleTimeString('ko-KR', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  })
+}
+
+const goBack = () => {
+  router.back()
+}
+
+onMounted(() => {
+  fetchBook()
+})
 </script>
 
 <style lang="scss" scoped>
