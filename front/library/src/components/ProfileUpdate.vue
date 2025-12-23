@@ -97,6 +97,13 @@ import { useRouter } from "vue-router";
 import { computed, ref, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import userImg from "@/assets/imges/userImgBlue.png";
+import msgImg from "@/assets/imges/msgImgBlue.png";
+import phoneImg from "@/assets/imges/phoneImgBlue.png";
+import birthImg from "@/assets/imges/birthImgBlue.png";
+import addressImg from "@/assets/imges/addressImgBlue.png";
+import gederImg from "@/assets/imges/genderImgBlue.png";
+import jobImg from "@/assets/imges/jobImgBlue.png";
+import interestImg from "@/assets/imges/interestImgBlue.png";
 
 const router = useRouter();
 
@@ -136,15 +143,15 @@ watch(
 const editRows = computed(() => {
   return [
     { key: "name", label: "이름", type: "text", placeholder: "이름", imgSrc: userImg, imgAlt: "유저" },
-    { key: "phone", label: "전화번호", type: "text", placeholder: "전화번호", imgSrc: userImg, imgAlt: "유저" },
-    { key: "birthdate", label: "생년월일", type: "text", placeholder: "YYYY-MM-DD", imgSrc: userImg, imgAlt: "유저" },
-    { key: "address", label: "주소", type: "text", placeholder: "주소", imgSrc: userImg, imgAlt: "유저" },
+    { key: "phone", label: "전화번호", type: "text", placeholder: "전화번호", imgSrc: phoneImg, imgAlt: "전화번호" },
+    { key: "birthdate", label: "생년월일", type: "text", placeholder: "YYYY-MM-DD", imgSrc: birthImg, imgAlt: "생년월일" },
+    { key: "address", label: "주소", type: "text", placeholder: "주소", imgSrc: addressImg, imgAlt: "주소" },
     {
       key: "gender",
       label: "성별",
       kind: "select",
-      imgSrc: userImg,
-      imgAlt: "유저",
+      imgSrc: gederImg,
+      imgAlt: "성별",
       options: [
         { value: "", label: "선택 안함" },
         { value: "male", label: "남성" },
@@ -156,8 +163,8 @@ const editRows = computed(() => {
       key: "occupation",
       label: "직업",
       kind: "select",
-      imgSrc: userImg,
-      imgAlt: "유저",
+      imgSrc: jobImg,
+      imgAlt: "직업",
       options: [
         { value: "", label: "선택 안함" },
         { value: "office", label: "직장인" },
@@ -168,7 +175,7 @@ const editRows = computed(() => {
         { value: "unemployed", label: "백수" },
       ],
     },
-    { key: "interests", label: "관심사", type: "text", placeholder: "예: 소설, 경제", imgSrc: userImg, imgAlt: "유저" },
+    { key: "interests", label: "관심사", type: "text", placeholder: "예: 소설, 경제", imgSrc: interestImg, imgAlt: "관심사" },
   ];
 });
 

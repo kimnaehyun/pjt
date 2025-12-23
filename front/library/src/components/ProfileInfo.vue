@@ -54,6 +54,13 @@ import { useRouter } from "vue-router";
 import { computed } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import userImg from "@/assets/imges/userImgBlue.png";
+import msgImg from "@/assets/imges/msgImgBlue.png";
+import phoneImg from "@/assets/imges/phoneImgBlue.png";
+import birthImg from "@/assets/imges/birthImgBlue.png";
+import addressImg from "@/assets/imges/addressImgBlue.png";
+import gederImg from "@/assets/imges/genderImgBlue.png";
+import jobImg from "@/assets/imges/jobImgBlue.png";
+import interestImg from "@/assets/imges/interestImgBlue.png";
 
 const router = useRouter();
 
@@ -86,13 +93,13 @@ const infoRows = computed(() => {
   const u = authStore.user || {};
   return [
     { label: "이름", value: u.name || u.username || "", imgSrc: userImg, imgAlt: "유저" },
-    { label: "이메일", value: u.email || "", imgSrc: userImg, imgAlt: "유저" },
-    { label: "전화번호", value: u.phone || "", imgSrc: userImg, imgAlt: "유저" },
-    { label: "생년월일", value: u.birthdate || "", imgSrc: userImg, imgAlt: "유저" },
-    { label: "주소", value: u.address || "", imgSrc: userImg, imgAlt: "유저" },
-    { label: "성별", value: genderLabel(u.gender), imgSrc: userImg, imgAlt: "유저" },
-    { label: "직업", value: occupationLabel(u.occupation), imgSrc: userImg, imgAlt: "유저" },
-    { label: "관심사", value: u.interests || "", imgSrc: userImg, imgAlt: "유저" },
+    { label: "이메일", value: u.email || "", imgSrc: msgImg, imgAlt: "이메일" },
+    { label: "전화번호", value: u.phone || "", imgSrc: phoneImg, imgAlt: "전화번호" },
+    { label: "생년월일", value: u.birthdate || "", imgSrc: birthImg, imgAlt: "생년월일" },
+    { label: "주소", value: u.address || "", imgSrc: addressImg, imgAlt: "주소" },
+    { label: "성별", value: genderLabel(u.gender), imgSrc: gederImg, imgAlt: "성별" },
+    { label: "직업", value: occupationLabel(u.occupation), imgSrc: jobImg, imgAlt: "직업" },
+    { label: "관심사", value: u.interests || "", imgSrc: interestImg, imgAlt: "관심사" },
   ];
 });
 </script>
