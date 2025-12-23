@@ -2,10 +2,12 @@ import { createRouter, createWebHistory } from "vue-router";
 import LandingView from "@/views/LandingView.vue";
 import MainView from "@/views/MainView.vue";
 import SearchResultsView from "@/views/SearchResultsView.vue";
+import BookDetailView from "@/views/BookDetailView.vue";
 import SignUpView from "@/views/SignUpView.vue";
 import ProfileView from "@/views/ProfileView.vue";
 import ProfileInfo from "@/components/ProfileInfo.vue";
 import ProfileUpdate from "@/components/ProfileUpdate.vue";
+import ProfileLibrary from "@/components/ProfileLibrary.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -19,6 +21,23 @@ const router = createRouter({
       path: "/main",
       name: "main",
       component: MainView,
+    },
+    {
+      path: "/main/books/:id",
+      name: "bookDetail",
+      component: BookDetailView,
+      props: true,
+    },
+    {
+      path: "/main/genres/:genreId",
+      name: "genreResult",
+      component: SearchResultsView,
+      props: true,
+    },
+    {
+      path: "/main/ai",
+      name: "aiSearchResult",
+      component: SearchResultsView,
     },
     {
       path: "/main/:search",
@@ -36,6 +55,11 @@ const router = createRouter({
       children: [
         {
           path: "",
+          name: "profileHome",
+          component: ProfileLibrary,
+        },
+        {
+          path: "info",
           name: "profileDetail",
           component: ProfileInfo,
         },

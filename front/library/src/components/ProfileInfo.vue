@@ -1,6 +1,4 @@
 <template>
-
-
   <div class="p-8">
   <!-- Header -->
   <div class="flex justify-between items-center mb-6">
@@ -36,29 +34,26 @@
   </div>
 
   <!-- User Info -->
-  <form class="space-y-6">
-    
-      <div class="flex items-start gap-4">
-    <div
-      class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0"
-    >
-      <img :src="imgSrc" :alt="imgAlt" class="w-6 h-6" />
-    </div>
+  <div class="space-y-6">
+    <div v-for="row in infoRows" :key="row.label" class="flex items-start gap-4">
+      <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+        <img :src="row.imgSrc" :alt="row.imgAlt" class="w-6 h-6" />
+      </div>
 
-    <div class="flex-1">
-      <label class="block text-sm text-gray-600">{{ field }}</label>
-      <p class="text-gray-800 py-2">{{ value }}</p>
+      <div class="flex-1">
+        <label class="block text-sm text-gray-600">{{ row.label }}</label>
+        <p class="text-gray-800 py-2">{{ row.value || '-' }}</p>
+      </div>
     </div>
   </div>
-
-  </form>
 </div>
-
-  
 </template>
 
 <script setup>
 import { useRouter } from "vue-router";
+import { computed } from "vue";
+import { useAuthStore } from "@/stores/auth";
+import userImg from "@/assets/imges/userImgBlue.png";
 
 const router = useRouter();
 
@@ -67,11 +62,38 @@ const goProfileUpdate = () => {
   router.push({ name: "profileUpdate" });
 };
 
-const { imgSrc, imgAlt, field, value } = defineProps({
-  imgSrc: String,
-  imgAlt: String,
-  field: String,
-  value: String,
+const authStore = useAuthStore();
+
+const occupationLabel = (code) => {
+  const map = {
+    office: "직장인",
+    jobseeker: "취준생",
+    highschool: "고등학생",
+    college: "대학생",
+    student: "학생",
+    unemployed: "백수",
+    homemaker: "주부",
+  };
+  return map[code] || code || "";
+};
+
+const genderLabel = (code) => {
+  const map = { male: "남성", female: "여성", other: "기타" };
+  return map[code] || code || "";
+};
+
+const infoRows = computed(() => {
+  const u = authStore.user || {};
+  return [
+    { label: "이름", value: u.name || u.username || "", imgSrc: userImg, imgAlt: "유저" },
+    { label: "이메일", value: u.email || "", imgSrc: userImg, imgAlt: "유저" },
+    { label: "전화번호", value: u.phone || "", imgSrc: userImg, imgAlt: "유저" },
+    { label: "생년월일", value: u.birthdate || "", imgSrc: userImg, imgAlt: "유저" },
+    { label: "주소", value: u.address || "", imgSrc: userImg, imgAlt: "유저" },
+    { label: "성별", value: genderLabel(u.gender), imgSrc: userImg, imgAlt: "유저" },
+    { label: "직업", value: occupationLabel(u.occupation), imgSrc: userImg, imgAlt: "유저" },
+    { label: "관심사", value: u.interests || "", imgSrc: userImg, imgAlt: "유저" },
+  ];
 });
 </script>
 

@@ -16,6 +16,7 @@
               >이메일</label
             >
             <BaseInput
+              v-model="email"
               type="email"
               :img-src="msgImg"
               img-alt="이메일"
@@ -29,12 +30,15 @@
               >비밀번호</label
             >
             <BaseInput
+              v-model="password"
               type="password"
               :img-src="passImg"
               img-alt="비밀번호"
               msg="비밀번호를 입력하세요"
             />
           </div>
+
+          <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
 
           <!-- 로그인 버튼 -->
           <BaseButton
@@ -66,11 +70,35 @@ import msgImg from "@/assets/imges/msgImg.png";
 import passImg from "@/assets/imges/password.png";
 import BaseButton from "@/components/BaseButton.vue";
 import { useRouter } from "vue-router";
+import { ref } from "vue";
+import { useAuthStore } from "@/stores/auth";
 
 const router = useRouter();
+const authStore = useAuthStore();
+
+const email = ref("");
+const password = ref("");
+const errorMessage = ref("");
+
 const onSubmit = () => {
-  // TODO: 로그인 검증 / API 호출
-  router.push({ name: "main" });
+  errorMessage.value = "";
+  if (!email.value.trim() || !password.value) {
+    errorMessage.value = "이메일과 비밀번호를 입력해주세요.";
+    return;
+  }
+
+  authStore
+    .login({ email: email.value, password: password.value })
+    .then(() => {
+      router.push({ name: "main" });
+    })
+    .catch((err) => {
+      const msg =
+        err?.response?.data?.error ||
+        err?.response?.data?.detail ||
+        "로그인에 실패했습니다.";
+      errorMessage.value = msg;
+    });
 };
 const goSignup = () => {
   router.push({ name: "signUp" });

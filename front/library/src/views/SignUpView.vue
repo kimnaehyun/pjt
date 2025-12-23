@@ -23,52 +23,92 @@
             <div>
                 <label for="name" class="block text-sm mb-2 text-gray-700">이름</label>
                 
-            <BaseInput type="text" msg="홍길동" :img-src="userImg" img-alt="이름" />
+          <BaseInput v-model="name" type="text" msg="홍길동" :img-src="userImg" img-alt="이름" />
         </div>
 
         <!-- 이메일 -->
         <div>
           <label for="email" class="block text-sm mb-2 text-gray-700">이메일</label>
-            <BaseInput type="email" msg="example@email.com" :img-src="mailImg" img-alt="이메일" />
+            <BaseInput v-model="email" type="email" msg="example@email.com" :img-src="mailImg" img-alt="이메일" />
+        </div>
+
+        <!-- 전화번호 -->
+        <div>
+          <label for="phone" class="block text-sm mb-2 text-gray-700">전화번호</label>
+          <BaseInput v-model="phone" type="tel" msg="010-1234-5678" />
         </div>
 
         <!-- 비밀번호 -->
         <div>
           <label for="password" class="block text-sm mb-2 text-gray-700">비밀번호</label>
-       <BaseInput type="password" msg="비밀번호를 입력하세요" :img-src="passwordImg" img-alt="비밀번호" />
+       <BaseInput v-model="password" type="password" msg="비밀번호를 입력하세요" :img-src="passwordImg" img-alt="비밀번호" />
         </div>
 
         <!-- 비밀번호 확인 -->
         <div>
           <label for="confirmPassword" class="block text-sm mb-2 text-gray-700">비밀번호 확인</label>
-          <BaseInput type="password" msg="비밀번호를 다시 입력하세요" :img-src="passwordImg" img-alt="비밀번호 확인" />
+          <BaseInput v-model="confirmPassword" type="password" msg="비밀번호를 다시 입력하세요" :img-src="passwordImg" img-alt="비밀번호 확인" />
+        </div>
+
+        <!-- 생년월일 -->
+        <div>
+          <label for="birthdate" class="block text-sm mb-2 text-gray-700">생년월일</label>
+          <BaseInput v-model="birthdate" type="date" msg="YYYY-MM-DD" />
         </div>
 
         <!-- 선택 사항 -->
         <div class="border-t pt-4">
           <p class="text-sm text-gray-600 mb-4">선택 사항</p>
           <div class="space-y-4">
-            <!-- 전화번호 -->
+            <!-- 성별 -->
             <div>
-              <label for="phone" class="block text-sm mb-2 text-gray-700">전화번호</label>
-              <BaseInput type="tel" msg="010-1234-5678" />
+              <label for="gender" class="block text-sm mb-2 text-gray-700">성별</label>
+              <select
+                id="gender"
+                v-model="gender"
+                class="w-full pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+              >
+                <option value="">선택 안함</option>
+                <option value="male">남성</option>
+                <option value="female">여성</option>
+                <option value="other">기타</option>
+              </select>
             </div>
 
-            <!-- 생년월일 -->
+            <!-- 직업 -->
             <div>
-              <label for="birthdate" class="block text-sm mb-2 text-gray-700">생년월일</label>
-              <BaseInput type="date" msg="YYYY-MM-DD" />
+              <label for="occupation" class="block text-sm mb-2 text-gray-700">직업</label>
+              <select
+                id="occupation"
+                v-model="occupation"
+                class="w-full pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+              >
+                <option value="">선택 안함</option>
+                <option value="office">직장인</option>
+                <option value="jobseeker">취준생</option>
+                <option value="highschool">고등학생</option>
+                <option value="college">대학생</option>
+                <option value="student">학생</option>
+                <option value="unemployed">백수</option>
+              </select>
+            </div>
+
+            <!-- 관심사 -->
+            <div>
+              <label for="interests" class="block text-sm mb-2 text-gray-700">관심사</label>
+              <BaseInput v-model="interests" type="text" msg="예: 소설, 자기계발, 경제" />
             </div>
 
             <!-- 주소 -->
             <div>
               <label for="address" class="block text-sm mb-2 text-gray-700">주소</label>
-              <BaseInput type="text" msg="주소를 입력하세요" />
+              <BaseInput v-model="address" type="text" msg="주소를 입력하세요" />
             </div>
           </div>
         </div>
 
         <!-- 가입하기 버튼 -->
+        <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
         
         <BaseButton type="submit" value="가입하기"
           class-name="bg-blue-600 text-white hover:bg-blue-700 transition-colors" />
@@ -93,16 +133,72 @@ import mailImg from '@/assets/imges/msgImg.png';
 import passwordImg from '@/assets/imges/password.png';
 import BaseButton from '@/components/BaseButton.vue';
 import { useRouter } from 'vue-router'
+import { ref } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
+
+const name = ref('')
+const email = ref('')
+const password = ref('')
+const confirmPassword = ref('')
+const phone = ref('')
+const gender = ref('')
+const occupation = ref('')
+const interests = ref('')
+const birthdate = ref('')
+const address = ref('')
+const errorMessage = ref('')
 
 const goLanding = () => {
   router.back()
 };
 const onSubmit = () => {
-  // TODO: 회원가입 폼 제출 처리 로직 / API 호출
-  router.push({ name: "main" });
-  console.log('회원가입 폼이 제출되었습니다.');
+  errorMessage.value = ''
+  if (!name.value.trim()) {
+    errorMessage.value = '이름을 입력해주세요.'
+    return
+  }
+  if (!email.value.trim() || !password.value) {
+    errorMessage.value = '이메일과 비밀번호를 입력해주세요.'
+    return
+  }
+  if (password.value !== confirmPassword.value) {
+    errorMessage.value = '비밀번호가 일치하지 않습니다.'
+    return
+  }
+  if (!birthdate.value) {
+    errorMessage.value = '생년월일을 입력해주세요.'
+    return
+  }
+  if (!address.value.trim()) {
+    errorMessage.value = '주소를 입력해주세요.'
+    return
+  }
+
+  authStore
+    .signup({
+      name: name.value,
+      email: email.value,
+      password: password.value,
+      phone: phone.value,
+      gender: gender.value,
+      occupation: occupation.value,
+      interests: interests.value,
+      birthdate: birthdate.value,
+      address: address.value,
+    })
+    .then(() => {
+      router.push({ name: 'main' })
+    })
+    .catch((err) => {
+      const msg =
+        err?.response?.data?.error ||
+        err?.response?.data?.detail ||
+        '회원가입에 실패했습니다.'
+      errorMessage.value = msg
+    })
 };
 </script>
 

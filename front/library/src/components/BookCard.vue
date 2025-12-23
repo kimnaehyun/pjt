@@ -1,27 +1,43 @@
 <template>
- <a href="" class="group">
+ <RouterLink
+     class="group"
+     :to="{ name: 'bookDetail', params: { id: book.id } }"
+ >
     <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
-        <div class="aspect-[3/4] bg-gray-200 overflow-hidden">
-            <img src="" alt="" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                <div class="aspect-[4/5] bg-gray-200 overflow-hidden">
+            <img
+              v-if="book?.cover_url"
+              :src="book.cover_url"
+              :alt="book.title || 'book cover'"
+              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            >
         </div>
         <div class="p-4">
-            <div class="text-sm text-blue-600 mb-1"></div>
-            <h3 class="mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors"></h3>
-            <p class="text-gray-600 text-sm mb-2"></p>
+            <div class="text-sm text-blue-600 mb-1">{{ book?.category_name || book?.category?.name || '' }}</div>
+            <h3 class="mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">{{ book?.title || '' }}</h3>
+            <p class="text-gray-600 text-sm mb-2">{{ book?.author_name || book?.author?.name || '' }}</p>
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1">
                     <img :src="star" alt="별점" class="w-4 h-4">
-                    <span class="text-sm"></span>
+                    <span class="text-sm">{{ book?.review_count ?? '' }}</span>
                 </div>
-                <span class="text-blue-600"></span>
+                <span class="text-blue-600">{{ book?.genre_name || book?.genre?.name || '' }}</span>
             </div>
         </div>
     </div>
- </a>
+ </RouterLink>
 </template>
 
 <script setup>
+import { RouterLink } from 'vue-router'
 import star from '../assets/imges/star.png';
+
+defineProps({
+    book: {
+        type: Object,
+        required: true,
+    },
+})
 </script>
 
 <style  scoped>

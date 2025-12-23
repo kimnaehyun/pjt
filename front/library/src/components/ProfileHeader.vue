@@ -9,8 +9,8 @@
   />
 </div>
         <div>
-            <h1 class="mb-2 text-white">{{ userName }}</h1>
-            <p class="text-blue-100">{{ userEmail }}</p>
+            <h1 class="mb-2 text-white">{{ displayName }}</h1>
+            <p class="text-blue-100">{{ displayEmail }}</p>
         </div>
     </div>
 </div>
@@ -18,10 +18,23 @@
 
 <script setup>
 import userImg from '@/assets/imges/userImgBlue.png';
-defineProps({
+import { computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+
+const props = defineProps({
   userName: String,
   userEmail: String,
-}) 
+})
+
+const authStore = useAuthStore()
+
+const displayName = computed(() => {
+  return props.userName || authStore.user?.name || authStore.user?.username || '사용자'
+})
+
+const displayEmail = computed(() => {
+  return props.userEmail || authStore.user?.email || ''
+})
 </script>
 
 <style lang="scss" scoped>

@@ -5,7 +5,7 @@
       <ProfileHeader />
 
       <!-- 회원 정보 영역 -->
-   <RouterView />
+      <RouterView />
     </div>
   </div>
 </template>
@@ -13,20 +13,25 @@
 <script setup>
 import ProfileHeader from "@/components/ProfileHeader.vue";
 import { RouterView } from "vue-router";
-import { ref } from "vue";
-import userImg from "@/assets/imges/userImgBlue.png";
+import { onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
 
+const router = useRouter();
+const authStore = useAuthStore();
 
+onMounted(async () => {
+  if (!authStore.isAuthenticated) {
+    router.push({ name: "landing" });
+    return;
+  }
 
-
-const infos = ref([
-  { label: "이름", value: "사용자", imgSrc: userImg, imgAlt: "유저 이미지" },
-  { label: "이름", value: "사용자", imgSrc: userImg, imgAlt: "유저 이미지" },
-  { label: "이름", value: "사용자", imgSrc: userImg, imgAlt: "유저 이미지" },
-  { label: "이름", value: "사용자", imgSrc: userImg, imgAlt: "유저 이미지" },
-  { label: "이름", value: "사용자", imgSrc: userImg, imgAlt: "유저 이미지" },
-  { label: "이름", value: "사용자", imgSrc: userImg, imgAlt: "유저 이미지" },
-]);
+  try {
+    await authStore.fetchUser();
+  } catch (e) {
+    // 401 등은 axios interceptor에서 landing으로 이동 처리됨
+  }
+});
 </script>
 
 <style lang="scss" scoped></style>
