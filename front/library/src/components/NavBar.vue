@@ -81,7 +81,7 @@
          a3 3 0 0 0-3-3z"
     />
   </svg>
-  <span class="text-blue-600">북스토어</span>
+  <span class="text-blue-600">북핏</span>
 </button>
 
       </div>
