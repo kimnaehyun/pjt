@@ -41,6 +41,7 @@
         
         <!-- Profile -->
         <a
+          v-if="authStore.isAuthenticated"
           href="/main/profile"
           data-discover="true"
           class="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition-colors"
@@ -66,6 +67,7 @@
 
         <!-- Logout -->
         <button
+          v-if="authStore.isAuthenticated"
           type="button"
           class="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
           @click="logOut"
@@ -90,6 +92,16 @@
           <span class="hidden sm:inline">로그아웃</span>
         </button>
 
+        <!-- Login (when logged out) -->
+        <button
+          v-else
+          type="button"
+          class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          @click="goLogin"
+        >
+          <span class="hidden sm:inline">로그인</span>
+        </button>
+
       </div>
     </div>
   </div>
@@ -99,12 +111,18 @@
 
 <script setup>
   import { useRouter } from 'vue-router'
+  import { useAuthStore } from '@/stores/auth'
 
   const router = useRouter()
+  const authStore = useAuthStore()
 
   const logOut = () => {
-    // TODO: 로그아웃 처리 로직 / API 호출
-    router.push('/')
+    authStore.logout()
+    router.replace({ name: 'landing' })
+  }
+
+  const goLogin = () => {
+    router.push({ name: 'landing' })
   }
 </script>
 

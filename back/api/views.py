@@ -10,6 +10,7 @@ from .serializers import (
     SimilarBookSerializer,
     AuthorSerializer,
     CategorySerializer,
+    SimpleCategorySerializer,
     GenreSerializer,
     ReviewSerializer,
 )
@@ -106,6 +107,12 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Category.objects.prefetch_related('books').all()
     serializer_class = CategorySerializer
     permission_classes = [AllowAny]
+
+    def get_serializer_class(self):
+        # List is frequently used by the frontend; keep it lightweight.
+        if self.action == 'list':
+            return SimpleCategorySerializer
+        return CategorySerializer
 
 
 class GenreViewSet(viewsets.ReadOnlyModelViewSet):
