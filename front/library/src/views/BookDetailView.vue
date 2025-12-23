@@ -122,33 +122,46 @@
   <div class="mt-8 bg-white rounded-xl shadow-lg p-8">
     <h2 class="mb-6 text-gray-800">댓글 ({{ book?.review_count ?? 0 }})</h2>
 
-    <form class="mb-8">
+ <form v-if="isAuthenticated" @submit.prevent="handleSubmitReview" class="mb-8">
   <div class="flex items-center gap-2">
     <BaseInput 
+      v-model="newReviewContent"
       type="text" 
-      placeholder="책 제목, 저자, 카테고리로 검색" 
-      class=" border-gray-300 focus:border-blue-600 focus:outline-none shadow-lg"
+      placeholder="댓글을 작성해주세요" 
+      class="border-gray-300 focus:border-blue-600 focus:outline-none shadow-lg"
     />
     <BaseButton 
       type="submit" 
-      class="bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors px-6 py-2 flex-1" 
+      class="bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors px-4 py-2 flex-1 " 
       :img-src="send"
       img-alt="작성"
       value="작성" 
     />
+  </div>
+</form>
+<div v-else class="mb-8 text-center py-4 bg-gray-50 rounded-lg">
+      <p class="text-gray-600">댓글을 작성하려면 로그인이 필요합니다.</p>
     </div>
-    </form>
-
-    <div class="space-y-4">
-      <p v-if="!reviews.length" class="text-center text-gray-500 py-8">아직 댓글이 없습니다.</p>
-      <div v-else class="space-y-3">
-        <div v-for="r in reviews" :key="r.id" class="border rounded-lg p-4">
-          <div class="flex items-center justify-between mb-2">
-            <p class="text-gray-800">{{ r.user_nickname || r.user || '사용자' }}</p>
-            <p class="text-gray-500 text-sm">{{ formatDate(r.created_at) }}</p>
+  <div class="space-y-4">
+      <div v-if="!book || !book.reviews || book.reviews.length === 0" class="text-center text-gray-500 py-8">
+        아직 댓글이 없습니다.
+      </div>
+      
+      <div v-else v-for="review in book.reviews" :key="review.id" 
+           class="border-b pb-4 last:border-b-0">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="font-semibold text-gray-800">{{ review.user_nickname || review.user }}</p>
+            <p class="text-sm text-gray-500">{{ formatDate(review.created_at) }}</p>
           </div>
-          <p class="text-gray-700">{{ r.content }}</p>
+          <button 
+            v-if="canDeleteReview(review)" 
+            @click="handleDeleteReview(review.id)"
+            class="text-red-600 hover:text-red-800 text-sm">
+            삭제
+          </button>
         </div>
+        <p class="mt-2 text-gray-700">{{ review.content }}</p>
       </div>
     </div>
   </div>
@@ -157,23 +170,24 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/components/BaseButton.vue';
 import BaseInput from '@/components/BaseInput.vue';
 import send from '@/assets/imges/send.png';
 import { RouterLink } from 'vue-router'
-import { bookAPI, userBookAPI } from '@/api'
+import { bookAPI, userBookAPI, reviewAPI  } from '@/api'
 import { useAuthStore } from '@/stores/auth'
+
+let ws = null  // WebSocket 인스턴스
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-
-const id = computed(() => route.params.id)
+const newReviewContent = ref('')
 const book = ref(null)
-const reviews = ref([])
-
+const id = computed(() => route.params.id)
+const isAuthenticated = computed(() => authStore.isAuthenticated)
 const similarBooks = computed(() => Array.isArray(book.value?.similar_books) ? book.value.similar_books : [])
 const similarBooks4 = computed(() => similarBooks.value.slice(0, 4))
 
@@ -194,6 +208,12 @@ const readIds = computed(() => {
   return new Set(list.map(b => b?.id).filter(Boolean))
 })
 
+const canDeleteReview = (review) => {
+  return authStore.user &&
+    (review.user === authStore.user.username ||
+     review.user_id === authStore.user.id)
+}
+
 const isFavorited = computed(() => (bookIdNumber.value != null) && favoriteIds.value.has(bookIdNumber.value))
 const isRead = computed(() => (bookIdNumber.value != null) && readIds.value.has(bookIdNumber.value))
 
@@ -211,9 +231,14 @@ const formatDate = (iso) => {
 const fetchBook = async () => {
   const bookId = String(id.value || '').trim()
   if (!bookId) return
+
   const response = await bookAPI.getBook(bookId)
   book.value = response.data
-  reviews.value = Array.isArray(response.data?.reviews) ? response.data.reviews : []
+
+  // reviews는 book 안에서만 관리
+  if (!Array.isArray(book.value.reviews)) {
+    book.value.reviews = []
+  }
 }
 
 const ensureUserLoaded = async () => {
@@ -255,15 +280,96 @@ const toggleRead = async () => {
   await authStore.fetchUser()
 }
 
-onMounted(() => {
-  fetchBook()
-  ensureUserLoaded()
+// ========== 댓글 작성 ==========
+const handleSubmitReview = async () => {
+  if (!newReviewContent.value.trim()) return
+
+  await reviewAPI.createReview({
+    book: book.value.id,
+    content: newReviewContent.value
+  })
+
+  newReviewContent.value = ''
+
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    await fetchBook()
+  }
+}
+
+
+// ========== 댓글 삭제 ==========
+const handleDeleteReview = async (reviewId) => {
+  if (!confirm('정말 삭제하시겠습니까?')) return
+  
+  try {
+    await reviewAPI.deleteReview(reviewId)
+    
+    // WebSocket이 연결되지 않으면 Fallback: 수동 새로고침
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      await fetchBook()
+    }
+  } catch (error) {
+    console.error('Failed to delete review:', error)
+    alert('댓글 삭제에 실패했습니다.')
+  }
+}
+
+// ========== WebSocket 연결 ==========
+
+const connectWS = () => {
+  try {
+    const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsUrl = `${wsProtocol}//127.0.0.1:8000/ws/books/${id.value}/`
+
+    ws = new WebSocket(wsUrl)
+
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data)
+
+      if (data.type === 'review.created') {
+        book.value.reviews = [data.review, ...(book.value.reviews || [])]
+        book.value.review_count = (book.value.review_count || 0) + 1
+      }
+
+      if (data.type === 'review.deleted') {
+        book.value.reviews = book.value.reviews.filter(
+          r => r.id !== data.review_id
+        )
+        book.value.review_count = Math.max(
+          0,
+          (book.value.review_count || 1) - 1
+        )
+      }
+    }
+
+    ws.onclose = () => {
+      setTimeout(connectWS, 2000)
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+
+onMounted(async () => {
+  await fetchBook()
+  await ensureUserLoaded()
+  connectWS()
 })
 
-watch(id, () => {
-  fetchBook()
-  ensureUserLoaded()
+onUnmounted(() => {
+  try { ws?.close() } catch {}
 })
+
+watch(id, async () => {
+  try {
+    ws?.close()
+  } catch {}
+
+  await fetchBook()
+  connectWS()
+})
+
 
 </script>
 

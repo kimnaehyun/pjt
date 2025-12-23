@@ -17,7 +17,8 @@ from .serializers import (
 )
 from django.conf import settings
 import re
-
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 
 def _looks_like_openai_key(value: str | None) -> bool:
     if not value:
@@ -146,20 +147,47 @@ class IsAuthorOrReadOnly(permissions.BasePermission):
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
-    """
-    리뷰 CRUD (읽기: 모두, 쓰기/수정/삭제: 인증 사용자)
-    """
     queryset = Review.objects.select_related('book', 'user').all()
     serializer_class = ReviewSerializer
     permission_classes = [
         permissions.IsAuthenticatedOrReadOnly,
         IsAuthorOrReadOnly
     ]
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['book']
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        """댓글 생성 후 WebSocket으로 브로드캐스트"""
+        review = serializer.save(user=self.request.user)
+        try:
+            channel_layer = get_channel_layer()
+            data = ReviewSerializer(review, context={'request': self.request}).data
+            async_to_sync(channel_layer.group_send)(
+                f'book_{review.book.id}',
+                {
+                    'type': 'review.created',
+                    'review': data,
+                }
+            )
+        except Exception:
+            # 비동기 작업 실패 시에도 요청은 성공
+            pass
+        return review
+
+    def perform_destroy(self, instance):
+        """댓글 삭제 후 WebSocket으로 브로드캐스트"""
+        book_id = instance.book.id
+        review_id = instance.id
+        super().perform_destroy(instance)
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'book_{book_id}',
+                {
+                    'type': 'review.deleted',
+                    'review_id': review_id,
+                }
+            )
+        except Exception:
+            pass
 
 
 @api_view(['GET'])
@@ -277,3 +305,4 @@ def recommend_by_profile(request):
 
     # Frontend expects a plain list response.
     return Response(found)
+
