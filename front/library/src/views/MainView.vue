@@ -22,7 +22,14 @@
     </div>
 
     <!-- 카테고리별 Top 10 -->
-    <div v-if="isLoading" class="text-center text-gray-600">불러오는 중...</div>
+    <div v-if="isLoading" class="flex items-center justify-center py-12">
+      <div class="fidget text-blue-600" role="status" aria-label="불러오는 중">
+        <span class="fidget__center" />
+        <span class="fidget__dot fidget__dot--1" />
+        <span class="fidget__dot fidget__dot--2" />
+        <span class="fidget__dot fidget__dot--3" />
+      </div>
+    </div>
 
     <div v-else class="space-y-10">
       <section v-for="cat in categories" :key="cat.id">
@@ -31,16 +38,36 @@
           <p class="text-sm text-gray-500">Top 10</p>
         </div>
 
-        <div class="marquee overflow-hidden">
-          <div class="marquee-track flex gap-6" :style="marqueeStyle(cat.id)">
-            <div
-              v-for="(book, idx) in marqueeBooksByCategory(cat.id)"
-              :key="`${book.id}-${idx}`"
-              class="w-40 sm:w-44 md:w-48 lg:w-56 shrink-0"
-            >
-              <BookCard :book="book" />
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+            @click="moveCategory(cat.id, -1)"
+            aria-label="이전"
+          >
+            ‹
+          </button>
+
+          <div class="flex-1 overflow-hidden carousel-viewport" :ref="(el) => setViewport(cat.id, el)">
+            <div class="track flex gap-6 w-max pb-2" :ref="(el) => setTrack(cat.id, el)" :style="trackStyle(cat.id)">
+              <div
+                v-for="book in booksByCategory(cat.id)"
+                :key="book.id"
+                class="book-item w-40 sm:w-44 md:w-48 lg:w-56 shrink-0"
+              >
+                <BookCard :book="book" />
+              </div>
             </div>
           </div>
+
+          <button
+            type="button"
+            class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+            @click="moveCategory(cat.id, 1)"
+            aria-label="다음"
+          >
+            ›
+          </button>
         </div>
       </section>
     </div>
@@ -52,7 +79,7 @@
 import BaseButton from '@/components/BaseButton.vue';
 import BaseInput from '@/components/BaseInput.vue';
 import BookCard from '@/components/BookCard.vue';
-import { onMounted, ref } from 'vue';
+import { onMounted, onBeforeUnmount, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { bookAPI, metaAPI } from '@/api';
 
@@ -62,6 +89,11 @@ const keyword = ref('')
 const isLoading = ref(true)
 const categories = ref([])
 const categoryBooks = ref({}) // { [categoryId]: Book[] }
+const carouselIndex = ref({}) // { [categoryId]: number }
+const tracks = ref({}) // { [categoryId]: HTMLElement }
+const viewports = ref({}) // { [categoryId]: HTMLElement }
+const steps = ref({}) // { [categoryId]: number }
+const visibleSlots = ref({}) // { [categoryId]: number }
 
 
 const search = () => {
@@ -86,64 +118,191 @@ const fetchBooks = async () => {
     const results = await Promise.allSettled(requests)
 
     const nextBooks = {}
+    const nextIndex = {}
+    const usedTitleKeys = new Set()
+
+    const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ')
+    const titleKey = (book) => {
+      const t = norm(book?.title)
+      const a = norm(book?.author_name || book?.author?.name)
+      return `${t}|${a}`
+    }
+
     for (let i = 0; i < catList.length; i++) {
       const catId = catList[i].id
       const r = results[i]
       const data = r.status === 'fulfilled' ? r.value.data : []
       const list = Array.isArray(data) ? data : []
-      const top10 = list
+      const sorted = list
         .slice()
         .sort((a, b) => (b?.global_recommend_count ?? 0) - (a?.global_recommend_count ?? 0))
-        .slice(0, 10)
-      if (top10.length > 0) {
-        nextBooks[catId] = top10
+
+      // 중복 도서 제거: 같은 제목(+저자)면 제외 (카테고리 내/카테고리 간 모두)
+      const picked = []
+      const localKeys = new Set()
+      for (const book of sorted) {
+        if (!book?.id) continue
+        const key = titleKey(book)
+        if (!key || key.startsWith('|')) continue
+        if (localKeys.has(key)) continue
+        if (usedTitleKeys.has(key)) continue
+        localKeys.add(key)
+        usedTitleKeys.add(key)
+        picked.push(book)
+        if (picked.length >= 10) break
+      }
+
+      if (picked.length > 0) {
+        nextBooks[catId] = picked
+        nextIndex[catId] = 0
       }
     }
 
     // books가 없는 카테고리는 화면에서 제외
     categories.value = categories.value.filter((c) => (nextBooks[c.id] || []).length > 0)
     categoryBooks.value = nextBooks
+    carouselIndex.value = nextIndex
   } finally {
     isLoading.value = false
   }
 }
 
-const marqueeBooksByCategory = (categoryId) => {
-  const list = categoryBooks.value?.[categoryId] || []
-  if (list.length <= 1) return list
-  // Duplicate once so we can loop seamlessly.
-  return [...list, ...list]
+const booksByCategory = (categoryId) => {
+  return categoryBooks.value?.[categoryId] || []
 }
 
-const marqueeStyle = (categoryId) => {
-  const list = categoryBooks.value?.[categoryId] || []
-  // Duration scales with item count; keep it readable.
-  const seconds = Math.max(18, list.length * 2.2)
-  return { '--marquee-duration': `${seconds}s` }
+const setViewport = (categoryId, el) => {
+  if (!el) return
+  viewports.value = { ...viewports.value, [categoryId]: el }
+  computeMetrics(categoryId)
+}
+
+const setTrack = (categoryId, el) => {
+  if (!el) return
+  tracks.value = { ...tracks.value, [categoryId]: el }
+  computeMetrics(categoryId)
+}
+
+const computeMetrics = (categoryId) => {
+  const track = tracks.value?.[categoryId]
+  const viewport = viewports.value?.[categoryId]
+  if (!track || !viewport) return
+  const item = track.querySelector('.book-item')
+  if (!item) return
+
+  const style = window.getComputedStyle(track)
+  const gap = parseFloat(style.columnGap || style.gap || '0') || 0
+  const step = item.getBoundingClientRect().width + gap
+  if (!step) return
+  steps.value = { ...steps.value, [categoryId]: step }
+
+  const slots = Math.max(1, Math.floor((viewport.clientWidth + gap) / step))
+  visibleSlots.value = { ...visibleSlots.value, [categoryId]: slots }
+}
+
+const maxStartIndex = (categoryId) => {
+  const list = booksByCategory(categoryId)
+  const slots = visibleSlots.value?.[categoryId] ?? 1
+  return Math.max(0, list.length - slots)
+}
+
+const moveCategory = (categoryId, direction) => {
+  computeMetrics(categoryId)
+  const maxIdx = maxStartIndex(categoryId)
+  const cur = carouselIndex.value?.[categoryId] ?? 0
+  const next = Math.min(maxIdx, Math.max(0, cur + direction))
+  carouselIndex.value = { ...carouselIndex.value, [categoryId]: next }
+}
+
+const trackStyle = (categoryId) => {
+  const step = steps.value?.[categoryId] ?? 0
+  const idx = carouselIndex.value?.[categoryId] ?? 0
+  return {
+    transform: `translateX(${-idx * step}px)`,
+    transition: 'transform 260ms ease',
+  }
+}
+
+const onResize = () => {
+  for (const c of categories.value) {
+    computeMetrics(c.id)
+    const maxIdx = maxStartIndex(c.id)
+    const cur = carouselIndex.value?.[c.id] ?? 0
+    if (cur > maxIdx) {
+      carouselIndex.value = { ...carouselIndex.value, [c.id]: maxIdx }
+    }
+  }
 }
 
 onMounted(() => {
   fetchBooks()
+  window.addEventListener('resize', onResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', onResize)
 })
 </script>
 
-<style lang="scss" scoped>
-.marquee-track {
-  width: max-content;
-  animation: marquee var(--marquee-duration, 22s) linear infinite;
+<style scoped>
+.carousel-viewport {
+  /* no drag scroll */
+  touch-action: pan-y;
 }
 
-@keyframes marquee {
-  0% {
-    transform: translateX(0);
+.fidget {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  animation: fidget-rotate 900ms linear infinite;
+}
+
+.fidget__center {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.85;
+}
+
+.fidget__dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: currentColor;
+}
+
+.fidget__dot--1 {
+  left: 50%;
+  top: 4px;
+  transform: translateX(-50%);
+}
+
+.fidget__dot--2 {
+  left: 10px;
+  bottom: 10px;
+}
+
+.fidget__dot--3 {
+  right: 10px;
+  bottom: 10px;
+}
+
+@keyframes fidget-rotate {
+  from {
+    transform: rotate(0deg);
   }
-  100% {
-    transform: translateX(-50%);
+  to {
+    transform: rotate(360deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .marquee-track {
+  .fidget {
     animation: none;
   }
 }
