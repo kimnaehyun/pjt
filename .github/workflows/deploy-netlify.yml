@@ -4,30 +4,37 @@ on:
   push:
     branches:
       - dev
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-node@v3
+      # 1. 코드 체크아웃 필수!
+      - uses: actions/checkout@v3
+
+      # 2. Node 설치
+      - name: Setup Node
+        uses: actions/setup-node@v3
         with:
           node-version: '20.18.x'
 
-      # library 폴더로 이동해서 의존성 설치
+      # 3. 의존성 설치
       - name: Install dependencies
-        run: npm install
+        run: npm ci
         working-directory: front/library
 
-       # 빌드
+      # 4. 빌드
       - name: Build
         run: npm run build
         working-directory: front/library
 
+      # 5. Netlify 배포
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v2.0
         with:
           publish-dir: 'front/library/dist'
           production-branch: dev
-          github-token: ${{ secrets.GIT_HUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: "Deploy from GitHub Actions"
           enable-pull-request-comment: false
           enable-commit-comment: false
@@ -35,4 +42,4 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        timeout-minutes: 1
+        timeout-minutes: 5
