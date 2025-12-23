@@ -47,6 +47,7 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     'django.contrib.admin',
+    'channels',
     'accounts',
     'api',
     'corsheaders',
@@ -91,7 +92,18 @@ TEMPLATES = [
     },
 ]
 
+# WSGI application for traditional deployments
 WSGI_APPLICATION = 'livria_backend.wsgi.application'
+# ASGI application for Channels
+ASGI_APPLICATION = 'livria_backend.asgi.application'
+
+# Channel layers: use in-memory layer by default for development. For production,
+# configure Redis and set CHANNEL_LAYERS accordingly.
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    }
+}
 
 
 # Database

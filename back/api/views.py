@@ -15,6 +15,8 @@ from .serializers import (
 )
 from django.conf import settings
 import re
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 
 
 def _looks_like_openai_key(value: str | None) -> bool:
@@ -145,7 +147,40 @@ class ReviewViewSet(viewsets.ModelViewSet):
     filterset_fields = ['book']
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        # Save review and broadcast to book group via Channels
+        review = serializer.save(user=self.request.user)
+        try:
+            channel_layer = get_channel_layer()
+            data = ReviewSerializer(review, context={'request': self.request}).data
+            async_to_sync(channel_layer.group_send)(
+                f'book_{review.book.id}',
+                {
+                    'type': 'review.created',
+                    'review': data,
+                }
+            )
+        except Exception:
+            # Non-blocking: don't fail the request if broadcasting fails
+            pass
+
+        return review
+
+    def perform_destroy(self, instance):
+        # Capture identifiers before deletion
+        book_id = instance.book.id if instance.book_id is None else instance.book.id
+        review_id = instance.id
+        super().perform_destroy(instance)
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'book_{book_id}',
+                {
+                    'type': 'review.deleted',
+                    'review_id': review_id,
+                }
+            )
+        except Exception:
+            pass
 
 
 @api_view(['GET'])
