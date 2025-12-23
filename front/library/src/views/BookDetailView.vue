@@ -311,8 +311,7 @@ const toggleRead = async () => {
 const connectWS = () => {
   try {
     const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl = `${wsProtocol}//127.0.0.1:8000/ws/books/${id.value}/`
-
+    const wsUrl = `${wsProtocol}//${location.host}/ws/books/${id.value}/`
     ws = new WebSocket(wsUrl)
 
     ws.onmessage = e => {
