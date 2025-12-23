@@ -1,58 +1,71 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import LandingView from '@/views/LandingView.vue'
-import SignUp from '@/views/SignUp.vue'
-import MainView from '@/views/MainView.vue'
-import BookDetailView from '@/views/BookDetailView.vue'
-import ProfileView from '@/views/ProfileView.vue'
-import SearchResultsView from '@/views/SearchResultsView.vue'
+import { createRouter, createWebHistory } from "vue-router";
+import LandingView from "@/views/LandingView.vue";
+import MainView from "@/views/MainView.vue";
+import SearchResultsView from "@/views/SearchResultsView.vue";
+import BookDetailView from "@/views/BookDetailView.vue";
+import SignUpView from "@/views/SignUpView.vue";
+import ProfileView from "@/views/ProfileView.vue";
+import ProfileInfo from "@/components/ProfileInfo.vue";
+import ProfileUpdate from "@/components/ProfileUpdate.vue";
+import ProfileLibrary from "@/components/ProfileLibrary.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/',
-      name: 'landing',
-      component: LandingView
+      path: "/",
+      name: "landing",
+      component: LandingView,
     },
     {
-      path: '/signup',
-      name: 'signup',
-      component: SignUp
-    },
-    {
-      path: '/main',
-      name: 'main',
+      path: "/main",
+      name: "main",
       component: MainView,
-      meta: { requiresAuth: true }
     },
     {
-      path: '/books/:id',
-      name: 'bookDetail',
-      component: BookDetailView
+      path: "/main/books/:id",
+      name: "bookDetail",
+      component: BookDetailView,
+      props: true,
     },
     {
-      path: '/profile',
-      name: 'profile',
+      path: "/main/genres/:genreId",
+      name: "genreResult",
+      component: SearchResultsView,
+      props: true,
+    },
+    {
+      path: "/main/:search",
+      name: "searchResult",
+      component: SearchResultsView,
+    },
+    {
+      path: "/signup",
+      name: "signUp",
+      component: SignUpView,
+    },
+    {
+      path: "/main/profile",
       component: ProfileView,
-      meta: { requiresAuth: true }
+      children: [
+        {
+          path: "",
+          name: "profileHome",
+          component: ProfileLibrary,
+        },
+        {
+          path: "info",
+          name: "profileDetail",
+          component: ProfileInfo,
+        },
+        {
+          path: "update",
+          name: "profileUpdate",
+          component: ProfileUpdate,
+        },
+      ],
     },
-    {
-      path: '/search',
-      name: 'search',
-      component: SearchResultsView
-    }
-  ]
-})
+  ],
+});
 
-// 인증 가드
-router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
-  
-  if (to.meta.requiresAuth && !token) {
-    next({ name: 'landing' })
-  } else {
-    next()
-  }
-})
-
-export default router
+export default router;

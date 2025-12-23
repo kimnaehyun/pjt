@@ -8,13 +8,13 @@ class UserAdmin(BaseUserAdmin):
     fieldsets = BaseUserAdmin.fieldsets + (
         ('추가 정보', {
             'fields': (
-                'nickname', 'age', 'avatar', 'default_avatar',
+                'nickname', 'avatar', 'default_avatar',
                 'status_message', 'favorites', 'read_books'
             ),
         }),
     )
     list_display = (
-        'username', 'email', 'nickname', 'age', 'is_staff', 'is_active'
+        'username', 'email', 'nickname', 'is_staff', 'is_active'
     )
     list_filter  = ('is_staff', 'is_active')
 

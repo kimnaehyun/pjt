@@ -13,10 +13,9 @@ class User(AbstractUser):
     email          = models.EmailField(unique=True)
     name           = models.CharField(max_length=100, blank=True, help_text='실명')
     nickname       = models.CharField(max_length=50, blank=True)
-    age            = models.PositiveIntegerField(null=True, blank=True)
     phone          = models.CharField(max_length=20, blank=True)
-    birthdate      = models.DateField(null=True, blank=True)
-    address        = models.TextField(blank=True)
+    birthdate      = models.DateField(null=True, blank=False)
+    address        = models.TextField(blank=False, default='')
     
     # 업로드된 프로필 이미지 파일
     avatar         = models.ImageField(
@@ -33,6 +32,8 @@ class User(AbstractUser):
     # 직업, 성별, 관심사 필드 추가
     OCCUPATION_CHOICES = [
         ('student', '학생'),
+        ('highschool', '고등학생'),
+        ('college', '대학생'),
         ('office', '회사원'),
         ('unemployed', '백수'),
         ('homemaker', '주부'),
