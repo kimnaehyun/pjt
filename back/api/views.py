@@ -12,6 +12,7 @@ from .serializers import (
     CategorySerializer,
     SimpleCategorySerializer,
     GenreSerializer,
+    SimpleGenreSerializer,
     ReviewSerializer,
 )
 from django.conf import settings
@@ -119,6 +120,12 @@ class GenreViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Genre.objects.prefetch_related('books').all()
     serializer_class = GenreSerializer
     permission_classes = [AllowAny]
+
+    def get_serializer_class(self):
+        # List is frequently used by the frontend; keep it lightweight.
+        if self.action == 'list':
+            return SimpleGenreSerializer
+        return GenreSerializer
 
 
 # EmotionTagViewSet removed — emotion tags are no longer used
