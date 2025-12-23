@@ -22,6 +22,18 @@ class AuthViewSet(viewsets.ViewSet):
 
     @action(
         detail=False,
+        methods=['get'],
+        url_path='me/favorites',
+        permission_classes=[permissions.IsAuthenticated]
+    )
+    def me_favorites(self, request):
+        """Frontend expects: GET /api/auth/me/favorites -> list[Book]."""
+        books = request.user.favorites.all()
+        serializer = BookSerializer(books, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=False,
         methods=['post'],
         url_path='signup',
         permission_classes=[permissions.AllowAny]
@@ -30,10 +42,24 @@ class AuthViewSet(viewsets.ViewSet):
         email = request.data.get('email')
         password = request.data.get('password')
         name = request.data.get('name', '')
+        address = request.data.get('address', '')
+        birthdate = request.data.get('birthdate')
         
         if not email or not password:
             return Response(
                 {'error': 'email and password are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not str(address).strip():
+            return Response(
+                {'error': 'address is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not str(birthdate or '').strip():
+            return Response(
+                {'error': 'birthdate is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -60,10 +86,9 @@ class AuthViewSet(viewsets.ViewSet):
                 password=password,
                 name=name,
                 nickname=request.data.get('nickname', ''),
-                age=request.data.get('age'),
                 phone=request.data.get('phone', ''),
-                birthdate=request.data.get('birthdate'),
-                address=request.data.get('address', ''),
+                birthdate=birthdate,
+                address=address,
                 occupation=request.data.get('occupation', ''),
                 gender=request.data.get('gender', ''),
                 interests=request.data.get('interests', '')

@@ -1,15 +1,10 @@
 <template>
-  <div id="app">
-    <RouterView />
-  </div>
+  <NavBar />
+  <RouterView />
 </template>
 
 <script setup>
-import { RouterView } from 'vue-router'
+import { RouterView, RouterLink } from "vue-router";
+import NavBar from "./components/NavBar.vue";
 </script>
-
-<style scoped>
-#app {
-  min-height: 100vh;
-}
-</style>
+<style scoped></style>

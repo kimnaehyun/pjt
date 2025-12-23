@@ -207,19 +207,19 @@ def recommend_by_profile(request):
     else:
         api_key = openai_api_key or gms_key
 
+    # If OpenAI is not configured (common in local/dev), return a safe fallback list
+    # so the frontend can keep functioning.
+    def _fallback_list():
+        qs = Book.objects.exclude(id__in=exclude_ids).order_by('-global_recommend_count', 'id')[:8]
+        return BookSerializer(qs, many=True, context={'request': request}).data
+
     if not api_key:
-        return Response(
-            {'detail': 'Missing API key. Set OPENAI_API_KEY (or GMS_KEY for SSAFY GMS).'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        return Response(_fallback_list())
 
     try:
         from openai import OpenAI
     except ModuleNotFoundError:
-        return Response(
-            {'detail': "Missing optional dependency 'openai'. Install it to enable AI recommendations."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        return Response(_fallback_list())
 
     client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
 
@@ -230,8 +230,8 @@ def recommend_by_profile(request):
             max_completion_tokens=300,
         )
         text = (resp.choices[0].message.content or '').strip()
-    except Exception as e:
-        return Response({'detail': 'OpenAI request failed', 'error': str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+    except Exception:
+        return Response(_fallback_list())
 
     # Parse titles from response
     candidates = []
@@ -259,7 +259,7 @@ def recommend_by_profile(request):
             found.append(BookSerializer(b, context={'request': request}).data)
 
     if not found:
-        qs = Book.objects.exclude(id__in=exclude_ids).all()[:8]
-        found = BookSerializer(qs, many=True, context={'request': request}).data
+        found = _fallback_list()
 
-    return Response({'recommendations': found})
+    # Frontend expects a plain list response.
+    return Response(found)

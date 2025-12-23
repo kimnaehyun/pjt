@@ -21,7 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'username', 'email', 'name',
-            'nickname', 'age', 'phone', 'birthdate', 'address',
+            'nickname', 'phone', 'birthdate', 'address',
             'status_message', 'avatar_url', 'default_avatar',
             'favorites', 'read_books', 'occupation', 'gender', 'interests'
         ]
@@ -55,10 +55,15 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'name', 'nickname', 'age', 'phone', 'birthdate', 'address',
+            'name', 'nickname', 'phone', 'birthdate', 'address',
             'status_message', 'avatar', 'default_avatar', 
             'occupation', 'gender', 'interests'
         ]
+
+    def validate_birthdate(self, value):
+        if value is None:
+            raise serializers.ValidationError('birthdate is required')
+        return value
 
     def update(self, instance, validated_data):
         occupation = validated_data.pop('occupation', None)
