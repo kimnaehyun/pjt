@@ -1,7 +1,7 @@
 <template>
-  <div class="p-8">
+  <div class="p-6 sm:p-8">
     <div class="flex justify-between items-center mb-8">
-      <h2 class="text-gray-800">내 서재</h2>
+      <h2 class="text-gray-900 text-xl font-semibold">내 서재</h2>
 
       <button
         type="button"
@@ -14,18 +14,20 @@
 
     <div class="space-y-10">
       <!-- AI 추천 도서 -->
-      <section>
+      <section class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-gray-800">AI 추천 도서</h3>
+          <h3 class="text-gray-900 font-semibold">AI 추천 도서</h3>
           <div class="flex items-center gap-3">
-            <p class="text-sm text-gray-500">최대 8권</p>
+            <span class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-600">
+              최대 8권
+            </span>
             <button
               type="button"
-              class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-600/30"
               :disabled="isAiLoading"
               @click="fetchAiBooks"
             >
-              다시 추천
+              AI 다시 추천
             </button>
           </div>
         </div>
@@ -44,7 +46,7 @@
         <div v-else class="flex items-center gap-3">
           <button
             type="button"
-            class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+            class="h-10 w-10 grid place-items-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
             @click="move('ai', -1)"
             aria-label="이전"
           >
@@ -61,7 +63,7 @@
 
           <button
             type="button"
-            class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+            class="h-10 w-10 grid place-items-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
             @click="move('ai', 1)"
             aria-label="다음"
           >
@@ -71,9 +73,9 @@
       </section>
 
       <!-- 찜한 도서 -->
-      <section>
+      <section class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-gray-800">찜한 도서</h3>
+          <h3 class="text-gray-900 font-semibold">찜한 도서</h3>
         </div>
 
         <p v-if="favorites.length === 0" class="text-gray-600 text-sm">찜한 도서가 없습니다.</p>
@@ -81,7 +83,7 @@
         <div v-else class="flex items-center gap-3">
           <button
             type="button"
-            class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+            class="h-10 w-10 grid place-items-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
             @click="move('favorites', -1)"
             aria-label="이전"
           >
@@ -106,7 +108,7 @@
 
           <button
             type="button"
-            class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+            class="h-10 w-10 grid place-items-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
             @click="move('favorites', 1)"
             aria-label="다음"
           >
@@ -116,9 +118,9 @@
       </section>
 
       <!-- 읽은 도서 -->
-      <section>
+      <section class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-gray-800">읽은 도서</h3>
+          <h3 class="text-gray-900 font-semibold">읽은 도서</h3>
         </div>
 
         <p v-if="readBooks.length === 0" class="text-gray-600 text-sm">읽은 도서가 없습니다.</p>
@@ -126,7 +128,7 @@
         <div v-else class="flex items-center gap-3">
           <button
             type="button"
-            class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+            class="h-10 w-10 grid place-items-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
             @click="move('read', -1)"
             aria-label="이전"
           >
@@ -143,7 +145,7 @@
 
           <button
             type="button"
-            class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+            class="h-10 w-10 grid place-items-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
             @click="move('read', 1)"
             aria-label="다음"
           >

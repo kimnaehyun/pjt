@@ -78,9 +78,18 @@ class BookViewSet(viewsets.ModelViewSet):
             )
             # also OR token queries to widen matches
             for t in tokens[:6]:
-                q |= Q(title__icontains=t) | Q(author__name__icontains=t)
+                q |= (
+                    Q(title__icontains=t)
+                    | Q(author__name__icontains=t)
+                    | Q(genre__name__icontains=t)
+                    | Q(category__name__icontains=t)
+                )
 
             qs = base_qs.filter(q)
+            # If we still have no matches, fall back to a stable "top" list
+            # so the UI isn't blank.
+            if not qs.exists():
+                qs = base_qs.order_by('-global_recommend_count', 'id')
             if nonce:
                 ids = list(qs.values_list('id', flat=True))
                 if not ids:
@@ -137,13 +146,14 @@ class BookViewSet(viewsets.ModelViewSet):
         ai_prompt += f"User request: {prompt_in}\n"
 
         try:
-            resp = client.chat.completions.create(
+            resp = client.responses.create(
                 model=model,
-                messages=[{'role': 'user', 'content': ai_prompt}],
-                temperature=0.9,
-                max_completion_tokens=200,
+                input=[{'role': 'user', 'content': ai_prompt}],
+                max_output_tokens=220,
+                reasoning={"effort": "minimal"},
+                text={"verbosity": "low"},
             )
-            text = (resp.choices[0].message.content or '').strip()
+            text = (getattr(resp, 'output_text', '') or '').strip()
         except Exception:
             return Response(_fallback_list())
 
@@ -169,6 +179,8 @@ class BookViewSet(viewsets.ModelViewSet):
 
         qs = base_qs.filter(q).distinct().order_by('-global_recommend_count', 'id')[:40]
         data = BookSerializer(qs, many=True, context={'request': request}).data
+        if not data:
+            return Response(_fallback_list())
         return Response(data)
 
     @action(detail=True, methods=['get'], permission_classes=[AllowAny], url_path='similar')
@@ -296,30 +308,13 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
         return review
 
-def perform_destroy(self, instance):
-    """댓글 삭제 후 WebSocket으로 브로드캐스트"""
-    book_id = instance.book.id
-    review_id = instance.id
-
-    super().perform_destroy(instance)
-
-    try:
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'book_{book_id}',
-            {
-                'type': 'review.deleted',
-                'review_id': review_id,
-            }
-        )
-    except Exception:
-        pass
-
     def perform_destroy(self, instance):
         """댓글 삭제 후 WebSocket으로 브로드캐스트"""
         book_id = instance.book.id
         review_id = instance.id
+
         super().perform_destroy(instance)
+
         try:
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
@@ -399,6 +394,10 @@ def recommend_by_profile(request):
     # so the frontend can keep functioning.
     def _fallback_list():
         qs = Book.objects.exclude(id__in=exclude_ids)
+        # If the user has favorited/read everything (or exclusion yields none),
+        # fall back to global recommendations so the UI still has content.
+        if not qs.exists():
+            qs = Book.objects.all()
         # If a nonce is provided, return a shuffled sample so "다시 추천" yields different results.
         if nonce:
             candidate_ids = list(qs.values_list('id', flat=True))
@@ -427,13 +426,14 @@ def recommend_by_profile(request):
     client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
 
     try:
-        resp = client.chat.completions.create(
+        resp = client.responses.create(
             model=model,
-            messages=[{'role': 'user', 'content': prompt}],
-            temperature=0.9,
-            max_completion_tokens=300,
+            input=[{'role': 'user', 'content': prompt}],
+            max_output_tokens=360,
+            reasoning={"effort": "minimal"},
+            text={"verbosity": "low"},
         )
-        text = (resp.choices[0].message.content or '').strip()
+        text = (getattr(resp, 'output_text', '') or '').strip()
     except Exception:
         return Response(_fallback_list())
 

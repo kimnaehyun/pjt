@@ -27,7 +27,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 ALADIN_API_KEY    = os.getenv('ALADIN_API_KEY')
 ALADIN_BASE_URL   = os.getenv('ALADIN_BASE_URL')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-5-mini')
+# Model default:
+# - If using SSAFY GMS (GMS_KEY is set) and OPENAI_MODEL is not provided, default to gpt-4.1.
+# - Otherwise keep the project's default.
+OPENAI_MODEL = os.getenv('OPENAI_MODEL') or ('gpt-4.1' if os.getenv('GMS_KEY') else 'gpt-5-mini')
 OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL')
 GMS_KEY = os.getenv('GMS_KEY')
 UPSTAGE_API_KEY = os.getenv('UPSTAGE_API_KEY')
@@ -184,6 +187,15 @@ CORS_ALLOWED_ORIGINS = [
     "http://70.12.102.104:5173",
     "https://peppy-wisp-cb5e01.netlify.app",
 ]
+
+# Dev convenience: Vite may choose a different port (5174/5175/...) if 5173 is busy.
+# Allow any localhost/127.0.0.1 port in DEBUG so the browser doesn't block API calls.
+if DEBUG:
+    CORS_ALLOWED_ORIGIN_REGEXES = [
+        r"^http://localhost:\\d+$",
+        r"^http://127\\.0\\.0\\.1:\\d+$",
+        r"^http://70\\.12\\.102\\.104:\\d+$",
+    ]
 
 # 커스텀 유저 모델 설정
 AUTH_USER_MODEL = 'accounts.User'

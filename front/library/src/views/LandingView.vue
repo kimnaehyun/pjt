@@ -1,10 +1,11 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <div class="max-w-md mx-auto mb-20">
-      <div class="bg-white rounded-2xl shadow-xl p-8">
+  <main class="min-h-screen bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="max-w-md mx-auto">
+        <div class="bg-white border border-gray-200 rounded-2xl shadow-md p-8">
         <!-- 헤더 -->
         <div class="text-center mb-8">
-          <h1 class="mb-4 text-gray-800">환영합니다</h1>
+          <h1 class="mb-3 text-gray-900 text-3xl font-semibold tracking-tight">환영합니다</h1>
           <p class="text-gray-600">로그인하여 다양한 도서를 만나보세요</p>
         </div>
 
@@ -61,7 +62,8 @@
         </div>
       </div>
     </div>
-  </div>
+    </div>
+  </main>
 </template>
 
 <script setup>
