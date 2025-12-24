@@ -14,8 +14,8 @@
         </div>
         <div class="p-4">
             <div class="text-sm text-blue-600 mb-1">{{ book?.category_name || book?.category?.name || '' }}</div>
-            <h3 class="mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">{{ book?.title || '' }}</h3>
-            <p class="text-gray-600 text-sm mb-2">{{ book?.author_name || book?.author?.name || '' }}</p>
+            <h3 class="mb-2 line-clamp-1 group-hover:text-blue-600 transition-colors">{{ book?.title || '' }}</h3>
+            <p class="text-gray-600 text-sm mb-2 line-clamp-1">{{ book?.author_name || book?.author?.name || '' }}</p>
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1">
                     <img :src="star" alt="별점" class="w-4 h-4">
