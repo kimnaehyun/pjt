@@ -319,12 +319,8 @@ const connectWS = () => {
   if (!id.value) return  // id가 없으면 연결하지 않음
 
   try {
-    if (!id.value) {
-  console.warn('Book ID is missing. WS connection skipped.')
-  return
-}
-const base = "wss://port-0-pjt-mjik7t1z410777eb.sel3.cloudtype.app"
-const wsUrl = `${base}/main/books/${id.value}/`
+   const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsUrl = `${wsProtocol}//127.0.0.1:8000/ws/books/${id.value}/`
 console.log('WS URL:', wsUrl)
 ws = new WebSocket(wsUrl)
 
