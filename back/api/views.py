@@ -22,6 +22,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 import hashlib
 import random
+from django.core.cache import cache
 
 
 def _looks_like_openai_key(value: str | None) -> bool:
@@ -41,7 +42,8 @@ class BookViewSet(viewsets.ModelViewSet):
     """
     queryset = Book.objects.select_related('author', 'category', 'genre')\
                            .prefetch_related('similar_books')\
-                           .all()
+                           .all()\
+                           .order_by('id')
     serializer_class = BookSerializer
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -67,46 +69,6 @@ class BookViewSet(viewsets.ModelViewSet):
         nonce = request.query_params.get('nonce')
         base_qs = Book.objects.select_related('author', 'category', 'genre').all()
 
-        # Fallback: plain keyword search over DB (title/author/genre/category)
-        def _fallback_list():
-            tokens = [t for t in re.split(r"\s+", prompt_in) if t]
-            q = (
-                Q(title__icontains=prompt_in)
-                | Q(author__name__icontains=prompt_in)
-                | Q(genre__name__icontains=prompt_in)
-                | Q(category__name__icontains=prompt_in)
-            )
-            # also OR token queries to widen matches
-            for t in tokens[:6]:
-                q |= (
-                    Q(title__icontains=t)
-                    | Q(author__name__icontains=t)
-                    | Q(genre__name__icontains=t)
-                    | Q(category__name__icontains=t)
-                )
-
-            qs = base_qs.filter(q)
-            # If we still have no matches, fall back to a stable "top" list
-            # so the UI isn't blank.
-            if not qs.exists():
-                qs = base_qs.order_by('-global_recommend_count', 'id')
-            if nonce:
-                ids = list(qs.values_list('id', flat=True))
-                if not ids:
-                    return []
-                # Deterministic shuffle per (prompt, nonce) without using user data.
-                seed_src = f"ai-search:{prompt_in}:{nonce}".encode('utf-8')
-                seed = int(hashlib.sha256(seed_src).hexdigest()[:16], 16)
-                rng = random.Random(seed)
-                pick_count = min(40, len(ids))
-                picked_ids = rng.sample(ids, pick_count)
-                books_map = base_qs.in_bulk(picked_ids)
-                picked = [books_map.get(i) for i in picked_ids if books_map.get(i) is not None]
-                return BookSerializer(picked, many=True, context={'request': request}).data
-
-            qs = qs.order_by('-global_recommend_count', 'id')[:40]
-            return BookSerializer(qs, many=True, context={'request': request}).data
-
         model = getattr(settings, 'OPENAI_MODEL', None) or 'gpt-5-mini'
         openai_api_key = getattr(settings, 'OPENAI_API_KEY', None)
         gms_key = getattr(settings, 'GMS_KEY', None)
@@ -126,12 +88,22 @@ class BookViewSet(viewsets.ModelViewSet):
             api_key = openai_api_key or gms_key
 
         if not api_key:
-            return Response(_fallback_list())
+            return Response(
+                {
+                    'detail': 'AI 검색이 설정되지 않았습니다. OPENAI_API_KEY 또는 GMS_KEY를 설정해주세요.',
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         try:
             from openai import OpenAI
         except ModuleNotFoundError:
-            return Response(_fallback_list())
+            return Response(
+                {
+                    'detail': 'OpenAI SDK가 설치되어 있지 않습니다. back/requirements.txt에 openai를 추가하고 설치해주세요.',
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
 
@@ -155,7 +127,12 @@ class BookViewSet(viewsets.ModelViewSet):
             )
             text = (getattr(resp, 'output_text', '') or '').strip()
         except Exception:
-            return Response(_fallback_list())
+            return Response(
+                {
+                    'detail': 'AI 검색 중 오류가 발생했습니다. API Key/BASE_URL/MODEL 설정을 확인해주세요.',
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         terms = []
         for line in text.splitlines():
@@ -170,7 +147,12 @@ class BookViewSet(viewsets.ModelViewSet):
                 break
 
         if not terms:
-            return Response(_fallback_list())
+            return Response(
+                {
+                    'detail': 'AI가 검색 키워드를 생성하지 못했습니다. prompt를 더 구체적으로 입력해주세요.',
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         # Convert terms to DB query
         q = Q()
@@ -179,8 +161,6 @@ class BookViewSet(viewsets.ModelViewSet):
 
         qs = base_qs.filter(q).distinct().order_by('-global_recommend_count', 'id')[:40]
         data = BookSerializer(qs, many=True, context={'request': request}).data
-        if not data:
-            return Response(_fallback_list())
         return Response(data)
 
     @action(detail=True, methods=['get'], permission_classes=[AllowAny], url_path='similar')
@@ -243,6 +223,36 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Category.objects.prefetch_related('books').all()
     serializer_class = CategorySerializer
     permission_classes = [AllowAny]
+
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny], url_path='top10')
+    def top10(self, request):
+        """Return cached Top 10 books per category for the main page.
+
+        Response: list[{id, name, books: list[Book]}]
+        """
+        cache_key = 'main:categories_top10:v1'
+        cached = cache.get(cache_key)
+        refresh = str(request.query_params.get('refresh') or '').lower() in {'1', 'true', 'yes'}
+        if cached is not None and not refresh:
+            return Response(cached)
+
+        cats = Category.objects.all().order_by('id')
+        payload = []
+        for c in cats:
+            qs = Book.objects.select_related('author', 'category', 'genre')\
+                .filter(category_id=c.id)\
+                .order_by('id')[:10]
+            if not qs.exists():
+                continue
+            payload.append({
+                'id': c.id,
+                'name': c.name,
+                'books': BookSerializer(qs, many=True, context={'request': request}).data,
+            })
+
+        # Cache for 1 hour (tune as needed). Cache resets on server restart.
+        cache.set(cache_key, payload, timeout=60 * 60)
+        return Response(payload)
 
     def get_serializer_class(self):
         # List is frequently used by the frontend; keep it lightweight.
@@ -312,6 +322,15 @@ class ReviewViewSet(viewsets.ModelViewSet):
         """댓글 삭제 후 WebSocket으로 브로드캐스트"""
         book_id = instance.book.id
         review_id = instance.id
+        deleted_ids = [review_id]
+
+        # If a parent review is deleted, its replies will be cascaded.
+        # Gather reply ids ahead of deletion so the frontend can remove them too.
+        try:
+            reply_ids = list(Review.objects.filter(parent_id=review_id).values_list('id', flat=True))
+            deleted_ids.extend(reply_ids)
+        except Exception:
+            pass
 
         super().perform_destroy(instance)
 
@@ -322,6 +341,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
                 {
                     'type': 'review.deleted',
                     'review_id': review_id,
+                    'deleted_ids': deleted_ids,
                 }
             )
         except Exception:

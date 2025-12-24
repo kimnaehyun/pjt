@@ -157,9 +157,78 @@
         <div v-for="r in book.reviews" :key="r.id" class="bg-gray-50 border border-gray-200 rounded-xl p-4">
           <div class="flex items-center justify-between mb-2">
             <p class="text-gray-900 font-medium">{{ r.user_nickname || r.user || '사용자' }}</p>
-            <p class="text-gray-500 text-sm">{{ formatDate(r.created_at) }}</p>
+            <div class="flex items-center gap-3">
+              <button
+                v-if="isAuthenticated && canDeleteReview(r)"
+                type="button"
+                class="text-xs font-semibold text-gray-600 hover:text-red-600 transition-colors"
+                @click="handleDeleteReview(r.id)"
+              >
+                삭제
+              </button>
+              <button
+                v-if="isAuthenticated"
+                type="button"
+                class="text-xs font-semibold text-gray-600 hover:text-blue-600 transition-colors"
+                @click="toggleReply(r.id)"
+              >
+                답글
+              </button>
+              <p class="text-gray-500 text-sm">{{ formatDate(r.created_at) }}</p>
+            </div>
           </div>
           <p class="text-gray-700 leading-relaxed">{{ r.content }}</p>
+
+          <!-- reply form (inline) -->
+          <form
+            v-if="isAuthenticated && replyToId === r.id"
+            class="mt-4"
+            @submit.prevent="handleSubmitReply(r.id)"
+          >
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div class="flex-1">
+                <BaseInput
+                  v-model="replyContent"
+                  type="text"
+                  msg="답글을 작성해주세요"
+                />
+              </div>
+              <div class="sm:w-28">
+                <BaseButton
+                  type="submit"
+                  :img-src="send"
+                  img-alt="작성"
+                  value="작성"
+                  class-name="bg-blue-600 border-blue-600 text-white hover:bg-blue-700 transition-colors"
+                />
+              </div>
+            </div>
+          </form>
+
+          <!-- replies -->
+          <div v-if="r.replies?.length" class="mt-4 pl-4 border-l border-gray-200 space-y-3">
+            <div
+              v-for="child in r.replies"
+              :key="child.id"
+              class="bg-white border border-gray-200 rounded-xl p-4"
+            >
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-gray-900 font-medium">{{ child.user_nickname || child.user || '사용자' }}</p>
+                <div class="flex items-center gap-3">
+                  <button
+                    v-if="isAuthenticated && canDeleteReview(child)"
+                    type="button"
+                    class="text-xs font-semibold text-gray-600 hover:text-red-600 transition-colors"
+                    @click="handleDeleteReview(child.id)"
+                  >
+                    삭제
+                  </button>
+                  <p class="text-gray-500 text-sm">{{ formatDate(child.created_at) }}</p>
+                </div>
+              </div>
+              <p class="text-gray-700 leading-relaxed">{{ child.content }}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -194,6 +263,8 @@ const book = ref({
 })
 
 const newReviewContent = ref('')
+const replyToId = ref(null)
+const replyContent = ref('')
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 
@@ -238,6 +309,18 @@ const goBack = () => router.back()
 const formatDate = iso =>
   iso ? new Date(iso).toLocaleString() : ''
 
+const removeReviewIds = (ids) => {
+  if (!Array.isArray(ids) || !ids.length) return
+  const idSet = new Set(ids)
+
+  book.value.reviews = (Array.isArray(book.value.reviews) ? book.value.reviews : [])
+    .filter(r => r && !idSet.has(r.id))
+    .map(r => ({
+      ...r,
+      replies: Array.isArray(r.replies) ? r.replies.filter(c => c && !idSet.has(c.id)) : [],
+    }))
+}
+
 /* ================= API ================= */
 
 const fetchBook = async () => {
@@ -274,6 +357,34 @@ const handleSubmitReview = async () => {
   })
 
   newReviewContent.value = ''
+
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    await fetchBook()
+  }
+}
+
+const toggleReply = parentId => {
+  if (!isAuthenticated.value) return
+  if (replyToId.value === parentId) {
+    replyToId.value = null
+    replyContent.value = ''
+    return
+  }
+  replyToId.value = parentId
+  replyContent.value = ''
+}
+
+const handleSubmitReply = async parentId => {
+  if (!String(replyContent.value).trim()) return
+
+  await reviewAPI.createReview({
+    book: book.value.id,
+    parent: parentId,
+    content: replyContent.value,
+  })
+
+  replyContent.value = ''
+  replyToId.value = null
 
   if (!ws || ws.readyState !== WebSocket.OPEN) {
     await fetchBook()
@@ -327,12 +438,30 @@ ws = new WebSocket(wsUrl)
     ws.onmessage = e => {
       const data = JSON.parse(e.data)
       if (data.type === 'review.created') {
-        book.value.reviews.unshift(data.review)
+        const review = data.review
+        if (!review) return
+
+        if (review.parent_id) {
+          const parent = (book.value.reviews || []).find(r => r.id === review.parent_id)
+          if (parent) {
+            if (!Array.isArray(parent.replies)) parent.replies = []
+            parent.replies.push(review)
+          } else {
+            book.value.reviews.unshift(review)
+          }
+        } else {
+          book.value.reviews.unshift({ ...review, replies: review.replies ?? [] })
+        }
+
         book.value.review_count++
       }
       if (data.type === 'review.deleted') {
-        book.value.reviews = book.value.reviews.filter(r => r.id !== data.review_id)
-        book.value.review_count = Math.max(0, book.value.review_count - 1)
+        const ids = Array.isArray(data.deleted_ids) && data.deleted_ids.length
+          ? data.deleted_ids
+          : [data.review_id]
+
+        removeReviewIds(ids)
+        book.value.review_count = Math.max(0, book.value.review_count - (ids?.length || 1))
       }
     }
 

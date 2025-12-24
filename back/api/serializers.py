@@ -77,10 +77,15 @@ class BookSerializer(serializers.ModelSerializer):
     review_count = serializers.SerializerMethodField()
     
     def get_reviews(self, obj):
-        # 순환 import 방지
-        from .models import Review
-        reviews = Review.objects.filter(book=obj).select_related('user').order_by('-created_at')
-        return ReviewSerializer(reviews, many=True, context=self.context).data
+        # top-level reviews + nested replies
+        reviews = (
+            Review.objects
+            .filter(book=obj, parent__isnull=True)
+            .select_related('user', 'book')
+            .prefetch_related('replies__user')
+            .order_by('-created_at')
+        )
+        return ReviewWithRepliesSerializer(reviews, many=True, context=self.context).data
     
     def get_review_count(self, obj):
         return obj.review_set.count()
@@ -128,6 +133,13 @@ class ReviewSerializer(serializers.ModelSerializer):
     book_cover_url = serializers.SerializerMethodField()
     book_id = serializers.IntegerField(source='book.id', read_only=True)
 
+    parent = serializers.PrimaryKeyRelatedField(
+        queryset=Review.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    parent_id = serializers.IntegerField(source='parent.id', read_only=True)
+
     book = serializers.PrimaryKeyRelatedField(queryset=Book.objects.all())
 
     def get_user_avatar(self, obj):
@@ -142,6 +154,77 @@ class ReviewSerializer(serializers.ModelSerializer):
         model  = Review
         fields = [
             'id', 'book_id', 'book_cover_url', 'book',
+            'parent', 'parent_id',
             'user', 'user_id', 'user_nickname', 'user_avatar', 'content', 'created_at'
         ]
         read_only_fields = ['id', 'user', 'user_id', 'user_nickname', 'created_at', 'user_avatar']
+
+    def validate(self, attrs):
+        book = attrs.get('book')
+        parent = attrs.get('parent')
+        if parent is None:
+            return attrs
+        if book is None:
+            # book is required anyway; keep error message predictable
+            raise serializers.ValidationError({'book': 'book is required'})
+        if parent.book_id != book.id:
+            raise serializers.ValidationError({'parent': 'parent must belong to the same book'})
+        if getattr(parent, 'parent_id', None) is not None:
+            raise serializers.ValidationError({'parent': 'only one level of replies is supported'})
+        return attrs
+
+
+class ReviewReplySerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField(read_only=True)
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    user_nickname = serializers.CharField(source='user.nickname', read_only=True)
+    user_avatar = serializers.SerializerMethodField()
+    book_id = serializers.IntegerField(source='book.id', read_only=True)
+    parent_id = serializers.IntegerField(source='parent.id', read_only=True)
+
+    def get_user_avatar(self, obj):
+        request = self.context.get('request')
+        url = obj.user.get_avatar_url()
+        return request.build_absolute_uri(url) if url else None
+
+    class Meta:
+        model = Review
+        fields = [
+            'id', 'book_id', 'parent_id',
+            'user', 'user_id', 'user_nickname', 'user_avatar',
+            'content', 'created_at'
+        ]
+
+
+class ReviewWithRepliesSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField(read_only=True)
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    user_nickname = serializers.CharField(source='user.nickname', read_only=True)
+    user_avatar = serializers.SerializerMethodField()
+    book_cover_url = serializers.SerializerMethodField()
+    book_id = serializers.IntegerField(source='book.id', read_only=True)
+
+    parent_id = serializers.IntegerField(source='parent.id', read_only=True)
+    replies = serializers.SerializerMethodField()
+
+    def get_user_avatar(self, obj):
+        request = self.context.get('request')
+        url = obj.user.get_avatar_url()
+        return request.build_absolute_uri(url) if url else None
+
+    def get_book_cover_url(self, obj):
+        return _upgrade_cover_url(getattr(obj.book, 'cover_url', None))
+
+    def get_replies(self, obj):
+        qs = obj.replies.select_related('user', 'book').order_by('created_at')
+        return ReviewReplySerializer(qs, many=True, context=self.context).data
+
+    class Meta:
+        model = Review
+        fields = [
+            'id', 'book_id', 'book_cover_url',
+            'parent_id',
+            'user', 'user_id', 'user_nickname', 'user_avatar',
+            'content', 'created_at',
+            'replies',
+        ]

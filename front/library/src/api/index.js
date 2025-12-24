@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api',
+  baseURL: 'http://localhost:8000/api',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -78,6 +78,7 @@ export const recommendAPI = {
 // 카테고리/장르/작가 API
 export const metaAPI = {
   getCategories: () => api.get('/categories/'),
+  getCategoriesTop10: () => api.get('/categories/top10/'),
   getGenres: () => api.get('/genres/'),
   getAuthors: () => api.get('/authors/')
 }

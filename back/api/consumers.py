@@ -24,6 +24,7 @@ class ReviewConsumer(AsyncWebsocketConsumer):
     async def review_deleted(self, event):
         await self.send(text_data=json.dumps({
             'type': 'review.deleted',
-            'review_id': event.get('review_id')
+            'review_id': event.get('review_id'),
+            'deleted_ids': event.get('deleted_ids')
         }))
 

@@ -32,12 +32,6 @@
             <BaseInput v-model="email" type="email" msg="example@email.com" :img-src="mailImg" img-alt="이메일" />
         </div>
 
-        <!-- 전화번호 -->
-        <div>
-          <label for="phone" class="block text-sm mb-2 text-gray-700">전화번호</label>
-          <BaseInput v-model="phone" type="tel" msg="010-1234-5678" />
-        </div>
-
         <!-- 비밀번호 -->
         <div>
           <label for="password" class="block text-sm mb-2 text-gray-700">비밀번호</label>
@@ -56,10 +50,22 @@
           <BaseInput v-model="birthdate" type="date" msg="YYYY-MM-DD" />
         </div>
 
+        <!-- 주소 -->
+        <div>
+          <label for="address" class="block text-sm mb-2 text-gray-700">주소</label>
+          <BaseInput v-model="address" type="text" msg="주소를 입력하세요" />
+        </div>
+
         <!-- 선택 사항 -->
         <div class="border-t pt-4">
           <p class="text-sm text-gray-600 mb-4">선택 사항</p>
           <div class="space-y-4">
+            <!-- 전화번호 -->
+            <div>
+              <label for="phone" class="block text-sm mb-2 text-gray-700">전화번호</label>
+              <BaseInput v-model="phone" type="tel" msg="010-1234-5678" />
+            </div>
+
             <!-- 성별 -->
             <div>
               <label for="gender" class="block text-sm mb-2 text-gray-700">성별</label>
@@ -97,12 +103,6 @@
             <div>
               <label for="interests" class="block text-sm mb-2 text-gray-700">관심사</label>
               <BaseInput v-model="interests" type="text" msg="예: 소설, 자기계발, 경제" />
-            </div>
-
-            <!-- 주소 -->
-            <div>
-              <label for="address" class="block text-sm mb-2 text-gray-700">주소</label>
-              <BaseInput v-model="address" type="text" msg="주소를 입력하세요" />
             </div>
           </div>
         </div>

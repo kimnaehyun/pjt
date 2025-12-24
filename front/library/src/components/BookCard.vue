@@ -18,7 +18,20 @@
             <p class="text-gray-600 text-sm mb-2 line-clamp-1">{{ book?.author_name || book?.author?.name || '' }}</p>
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1">
-                    <img :src="star" alt="별점" class="w-4 h-4">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            class="w-4 h-4 text-gray-600"
+                                            aria-label="댓글 수"
+                                            role="img"
+                                        >
+                                            <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+                                        </svg>
                     <span class="text-sm">{{ book?.review_count ?? '' }}</span>
                 </div>
                 <span class="text-blue-600">{{ book?.genre_name || book?.genre?.name || '' }}</span>
@@ -30,7 +43,6 @@
 
 <script setup>
 import { RouterLink } from 'vue-router'
-import star from '../assets/imges/star.png';
 
 defineProps({
     book: {

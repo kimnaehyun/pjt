@@ -171,6 +171,35 @@ const aiSearch = () => {
 const fetchBooks = async () => {
   isLoading.value = true
   try {
+    // 1) Preferred: backend cached/stable Top10 per category.
+    try {
+      const res = await metaAPI.getCategoriesTop10()
+      const list = Array.isArray(res.data) ? res.data : []
+
+      const nextBooks = {}
+      const nextIndex = {}
+      const nextCategories = []
+
+      for (const c of list) {
+        const catId = c?.id
+        const books = Array.isArray(c?.books) ? c.books : []
+        if (!catId || books.length === 0) continue
+        nextCategories.push({ id: catId, name: c?.name || '' })
+        nextBooks[catId] = books.slice(0, 10)
+        nextIndex[catId] = 0
+      }
+
+      if (nextCategories.length > 0) {
+        categories.value = nextCategories
+        categoryBooks.value = nextBooks
+        carouselIndex.value = nextIndex
+        return
+      }
+    } catch (e) {
+      // fall through to legacy fetch below
+    }
+
+    // 2) Fallback: fetch category list + books and compute Top10 on the client.
     const catRes = await metaAPI.getCategories()
     const catList = Array.isArray(catRes.data) ? catRes.data : []
     categories.value = catList
@@ -180,38 +209,16 @@ const fetchBooks = async () => {
 
     const nextBooks = {}
     const nextIndex = {}
-    const usedTitleKeys = new Set()
-
-    const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ')
-    const titleKey = (book) => {
-      const t = norm(book?.title)
-      const a = norm(book?.author_name || book?.author?.name)
-      return `${t}|${a}`
-    }
 
     for (let i = 0; i < catList.length; i++) {
       const catId = catList[i].id
       const r = results[i]
       const data = r.status === 'fulfilled' ? r.value.data : []
       const list = Array.isArray(data) ? data : []
-      const sorted = list
+      const picked = list
         .slice()
-        .sort((a, b) => (b?.global_recommend_count ?? 0) - (a?.global_recommend_count ?? 0))
-
-      // 중복 도서 제거: 같은 제목(+저자)면 제외 (카테고리 내/카테고리 간 모두)
-      const picked = []
-      const localKeys = new Set()
-      for (const book of sorted) {
-        if (!book?.id) continue
-        const key = titleKey(book)
-        if (!key || key.startsWith('|')) continue
-        if (localKeys.has(key)) continue
-        if (usedTitleKeys.has(key)) continue
-        localKeys.add(key)
-        usedTitleKeys.add(key)
-        picked.push(book)
-        if (picked.length >= 10) break
-      }
+        .sort((a, b) => (a?.id ?? 0) - (b?.id ?? 0))
+        .slice(0, 10)
 
       if (picked.length > 0) {
         nextBooks[catId] = picked
@@ -219,7 +226,6 @@ const fetchBooks = async () => {
       }
     }
 
-    // books가 없는 카테고리는 화면에서 제외
     categories.value = categories.value.filter((c) => (nextBooks[c.id] || []).length > 0)
     categoryBooks.value = nextBooks
     carouselIndex.value = nextIndex

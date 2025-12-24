@@ -99,8 +99,16 @@
               <div
                 v-for="book in favorites"
                 :key="book.id"
-                class="book-item w-40 sm:w-44 md:w-48 lg:w-56 shrink-0"
+                class="book-item w-40 sm:w-44 md:w-48 lg:w-56 shrink-0 relative"
               >
+                <button
+                  type="button"
+                  class="absolute top-2 right-2 z-10 h-8 w-8 grid place-items-center rounded-full border border-gray-200 bg-white/90 text-gray-700 hover:text-red-600 hover:bg-white transition-colors"
+                  aria-label="찜 도서 제거"
+                  @click.stop.prevent="removeFavorite(book.id)"
+                >
+                  ×
+                </button>
                 <BookCard :book="book" />
               </div>
             </div>
@@ -137,7 +145,15 @@
 
           <div class="flex-1 overflow-hidden carousel-viewport" :ref="(el) => setViewport('read', el)">
             <div class="track flex gap-6 w-max pb-2" :ref="(el) => setTrack('read', el)" :style="trackStyle('read')">
-              <div v-for="book in readBooks" :key="book.id" class="book-item w-40 sm:w-44 md:w-48 lg:w-56 shrink-0">
+              <div v-for="book in readBooks" :key="book.id" class="book-item w-40 sm:w-44 md:w-48 lg:w-56 shrink-0 relative">
+                <button
+                  type="button"
+                  class="absolute top-2 right-2 z-10 h-8 w-8 grid place-items-center rounded-full border border-gray-200 bg-white/90 text-gray-700 hover:text-red-600 hover:bg-white transition-colors"
+                  aria-label="읽은 도서 제거"
+                  @click.stop.prevent="removeRead(book.id)"
+                >
+                  ×
+                </button>
                 <BookCard :book="book" />
               </div>
             </div>
@@ -162,7 +178,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import BookCard from '@/components/BookCard.vue'
-import { recommendAPI } from '@/api'
+import { recommendAPI, userBookAPI } from '@/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -179,6 +195,25 @@ const readBooks = computed(() => {
 
 const aiBooks = ref([])
 const isAiLoading = ref(false)
+
+const removeFavorite = async (bookId) => {
+  if (!bookId) return
+  try {
+    await userBookAPI.removeFavorite(bookId)
+    await authStore.fetchUser()
+  } catch (e) {
+    // keep UI stable; errors are handled by interceptor/logout if needed
+  }
+}
+
+const removeRead = async (bookId) => {
+  if (!bookId) return
+  try {
+    await userBookAPI.removeReadBook(bookId)
+    await authStore.fetchUser()
+  } catch (e) {
+  }
+}
 
 const carouselIndex = ref({}) // { [sectionId]: number }
 // IMPORTANT: DOM element references must be non-reactive.
