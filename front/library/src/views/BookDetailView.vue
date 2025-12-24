@@ -7,7 +7,7 @@
       <path d="m12 19-7-7 7-7"></path>
       <path d="M19 12H5"></path>
     </svg>
-    뒤로
+    뒤로가기
   </button>
 
   <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
@@ -313,7 +313,7 @@ const connectWS = () => {
 
   try {
     const base = import.meta.env.VITE_WS_BASE_URL
-    const wsUrl = `${base}/ws/books/${id.value}/`
+    const wsUrl = `${base}/${id.value}/`
     ws = new WebSocket(wsUrl)
 
     ws.onmessage = e => {
