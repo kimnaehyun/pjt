@@ -7,7 +7,7 @@
       <path d="m12 19-7-7 7-7"></path>
       <path d="M19 12H5"></path>
     </svg>
-    뒤로가기
+    뒤로
   </button>
 
   <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
