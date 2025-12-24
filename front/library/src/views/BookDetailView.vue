@@ -313,10 +313,14 @@ const connectWS = () => {
   if (!id.value) return  // id가 없으면 연결하지 않음
 
   try {
-    const base = import.meta.env.VITE_WS_BASE_URL
-    const wsUrl = `${base}/${id.value}/`
-    console.log('WS URL:', wsUrl)
-    ws = new WebSocket(wsUrl)
+    if (!id.value) {
+  console.warn('Book ID is missing. WS connection skipped.')
+  return
+}
+const base = import.meta.env.VITE_WS_BASE_URL
+const wsUrl = `${base}/main/books/${id.value}/`
+console.log('WS URL:', wsUrl)
+ws = new WebSocket(wsUrl)
 
     ws.onmessage = e => {
       const data = JSON.parse(e.data)
