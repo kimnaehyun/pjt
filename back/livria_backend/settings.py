@@ -27,7 +27,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 ALADIN_API_KEY    = os.getenv('ALADIN_API_KEY')
 ALADIN_BASE_URL   = os.getenv('ALADIN_BASE_URL')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-5-mini')
+# Model default:
+# - If using SSAFY GMS (GMS_KEY is set) and OPENAI_MODEL is not provided, default to gpt-4.1.
+# - Otherwise keep the project's default.
+OPENAI_MODEL = os.getenv('OPENAI_MODEL') or ('gpt-4.1' if os.getenv('GMS_KEY') else 'gpt-5-mini')
 OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL')
 GMS_KEY = os.getenv('GMS_KEY')
 UPSTAGE_API_KEY = os.getenv('UPSTAGE_API_KEY')
@@ -40,7 +43,12 @@ SECRET_KEY = 'django-insecure-hd(bjia--5-1x_c2_749etzod+)dwt6=bmw4(0ia9w$li%(tgu
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+_allowed_hosts_env = (os.getenv('ALLOWED_HOSTS') or '').strip()
+if _allowed_hosts_env:
+    ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(',') if h.strip()]
+else:
+    # Safe defaults for local development and Django test client.
+    ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 
 
 # Application definition
@@ -186,6 +194,15 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://70.12.102.104:5173",
 ]
+
+# Dev convenience: Vite may choose a different port (5174/5175/...) if 5173 is busy.
+# Allow any localhost/127.0.0.1 port in DEBUG so the browser doesn't block API calls.
+if DEBUG:
+    CORS_ALLOWED_ORIGIN_REGEXES = [
+        r"^http://localhost:\\d+$",
+        r"^http://127\\.0\\.0\\.1:\\d+$",
+        r"^http://70\\.12\\.102\\.104:\\d+$",
+    ]
 
 # 커스텀 유저 모델 설정
 AUTH_USER_MODEL = 'accounts.User'

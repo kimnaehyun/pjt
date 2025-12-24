@@ -27,7 +27,7 @@ defusedxml==0.7.1
 distro==1.9.0
 dj-rest-auth==7.0.1
 Django==5.2.9
-django-allauth==64.0.0r1
+django-allauth==64.0.0
 django-bootstrap5==25.2
 django-cors-headers==4.9.0
 django-extensions==4.1
@@ -90,6 +90,7 @@ notebook==7.4.4
 notebook_shim==0.2.4
 numpy==2.3.2
 oauthlib==3.3.1
+openai==2.14.0
 overrides==7.7.0
 packaging==25.0
 pandas==2.3.1
