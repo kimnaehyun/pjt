@@ -309,6 +309,8 @@ const toggleRead = async () => {
 /* ================= WebSocket ================= */
 
 const connectWS = () => {
+  console.log(id.value);
+  
   if (!id.value) return  // id가 없으면 연결하지 않음
 
   try {
