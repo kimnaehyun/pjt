@@ -314,7 +314,7 @@ const connectWS = () => {
 
   try {
     const base = import.meta.env.VITE_WS_BASE_URL
-    const wsUrl = `${base}/main/books/${id.value}/`
+    const wsUrl = `${base}/ws/books/${id.value}/`
     console.log('WS URL:', wsUrl)
     ws = new WebSocket(wsUrl)
 
