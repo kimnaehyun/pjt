@@ -1,86 +1,121 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <main class="min-h-screen bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-    <!-- 검색 섹션 -->
-    <div class="mb-12">
-      <h1 class="text-center mb-8 text-gray-800 text-2xl font-semibold">도서를 검색해보세요</h1>
-      <form class="mb-8" @submit.prevent="search">
-        <div class="flex items-center gap-2">
-          <BaseInput
-            v-model="keyword"
-            type="text"
-            placeholder="책 제목, 저자, 카테고리로 검색"
-            class=" border-gray-300 focus:border-blue-600 focus:outline-none shadow-lg"
-          />
-          <button
-            type="button"
-            class="px-4 py-2 rounded-full transition-colors"
-            :class="isAiMode ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'"
-            @click="aiSearch"
-          >
-            AI
-          </button>
-          <BaseButton
-            type="submit"
-            class="bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors px-6 py-2 flex-1"
-            value="검색"
-          />
-        </div>
-      </form>
-    </div>
-
-    <!-- 카테고리별 Top 10 -->
-    <div v-if="isLoading" class="flex items-center justify-center py-12">
-      <div class="fidget text-blue-600" role="status" aria-label="불러오는 중">
-        <span class="fidget__center" />
-        <span class="fidget__dot fidget__dot--1" />
-        <span class="fidget__dot fidget__dot--2" />
-        <span class="fidget__dot fidget__dot--3" />
-      </div>
-    </div>
-
-    <div v-else class="space-y-10">
-      <section v-for="cat in categories" :key="cat.id">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-gray-800 text-xl font-semibold">{{ cat.name }}</h2>
-          <p class="text-sm text-gray-500">Top 10</p>
+      <!-- 검색 섹션 -->
+      <section class="mb-12">
+        <div class="text-center mb-8">
+          <h1 class="text-gray-900 text-3xl sm:text-4xl font-semibold tracking-tight">어떤 책을 찾고 계신가요?</h1>
+          <p class="mt-2 text-gray-600">키워드로 검색하거나, AI로 추천을 받아보세요.</p>
         </div>
 
-        <div class="flex items-center gap-3">
-          <button
-            type="button"
-            class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
-            @click="moveCategory(cat.id, -1)"
-            aria-label="이전"
-          >
-            ‹
-          </button>
-
-          <div class="flex-1 overflow-hidden carousel-viewport" :ref="(el) => setViewport(cat.id, el)">
-            <div class="track flex gap-6 w-max pb-2" :ref="(el) => setTrack(cat.id, el)" :style="trackStyle(cat.id)">
-              <div
-                v-for="book in booksByCategory(cat.id)"
-                :key="book.id"
-                class="book-item w-40 sm:w-44 md:w-48 lg:w-56 shrink-0"
-              >
-                <BookCard :book="book" />
+        <div class="bg-white border border-gray-200 rounded-2xl shadow-md p-5 sm:p-6">
+          <form @submit.prevent="search">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div class="flex-1">
+                <BaseInput
+                  v-model="keyword"
+                  type="text"
+                  msg="책 제목, 저자, 카테고리로 검색"
+                />
               </div>
+
+              <button
+                type="button"
+                class="group h-12 rounded-full p-px shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-600/30"
+                :class="isAiMode
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 shadow-md'
+                  : 'bg-gradient-to-r from-gray-200 to-gray-300 hover:from-blue-500 hover:via-indigo-500 hover:to-sky-500'"
+                :aria-pressed="isAiMode"
+                @click="aiSearch"
+              >
+                <span
+                  class="flex h-full w-full items-center justify-center rounded-full px-5 text-sm font-semibold tracking-tight transition"
+                  :class="isAiMode
+                    ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 text-white'
+                    : 'bg-white text-gray-800 group-hover:bg-gray-50'"
+                >
+                  AI 검색
+                </span>
+              </button>
+
+              <div class="sm:w-40">
+                <BaseButton
+                  type="submit"
+                  value="검색"
+                  class-name="h-12 rounded-full bg-blue-600 border-blue-600 text-white hover:bg-blue-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600/30 transition-colors"
+                />
+              </div>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- 카테고리별 Top 10 -->
+      <div v-if="isLoading" class="flex items-center justify-center py-16">
+        <div class="fidget text-blue-600" role="status" aria-label="불러오는 중">
+          <span class="fidget__center" />
+          <span class="fidget__dot fidget__dot--1" />
+          <span class="fidget__dot fidget__dot--2" />
+          <span class="fidget__dot fidget__dot--3" />
+        </div>
+      </div>
+
+      <div v-else class="space-y-10">
+        <section
+          v-for="cat in categories"
+          :key="cat.id"
+          class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 sm:p-6"
+        >
+          <div class="flex items-end justify-between gap-4 mb-4">
+            <div>
+              <h2 class="text-gray-900 text-xl font-semibold">{{ cat.name }}</h2>
+              <span class="mt-1 inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-600">
+                Top 10 추천 도서
+              </span>
             </div>
           </div>
 
-          <button
-            type="button"
-            class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
-            @click="moveCategory(cat.id, 1)"
-            aria-label="다음"
-          >
-            ›
-          </button>
-        </div>
-      </section>
-    </div>
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              class="h-10 w-10 grid place-items-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+              @click="moveCategory(cat.id, -1)"
+              aria-label="이전"
+            >
+              ‹
+            </button>
 
-  </div>
+            <div class="flex-1 overflow-hidden carousel-viewport" :ref="(el) => setViewport(cat.id, el)">
+              <div
+                class="track flex gap-6 w-max pb-2"
+                :ref="(el) => setTrack(cat.id, el)"
+                :style="trackStyle(cat.id)"
+              >
+                <div
+                  v-for="book in booksByCategory(cat.id)"
+                  :key="book.id"
+                  class="book-item w-40 sm:w-44 md:w-48 lg:w-56 shrink-0"
+                >
+                  <BookCard :book="book" />
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="h-10 w-10 grid place-items-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+              @click="moveCategory(cat.id, 1)"
+              aria-label="다음"
+            >
+              ›
+            </button>
+          </div>
+        </section>
+      </div>
+
+    </div>
+  </main>
 </template>
 
 <script setup>

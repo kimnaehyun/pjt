@@ -1,5 +1,6 @@
 <template>
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<main class="min-h-screen bg-gray-50">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
   <button class="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6" @click="goBack">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -10,7 +11,7 @@
     뒤로가기
   </button>
 
-  <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+  <div class="bg-white border border-gray-200 rounded-2xl shadow-md p-6 md:p-8">
     <div class="grid gap-6 md:grid-cols-2 md:gap-10">
       <!-- Cover -->
       <div class="w-full">
@@ -122,44 +123,49 @@
   </div>
 
   <!-- 댓글 섹션 -->
-  <div class="mt-8 bg-white rounded-xl shadow-lg p-8">
-    <h2 class="mb-6 text-gray-800">댓글 ({{ book?.review_count ?? 0 }})</h2>
+  <div class="mt-8 bg-white border border-gray-200 rounded-2xl shadow-md p-6 md:p-8">
+    <h2 class="mb-6 text-gray-900 text-xl font-semibold">댓글 ({{ book?.review_count ?? 0 }})</h2>
 
     <form v-if="isAuthenticated" @submit.prevent="handleSubmitReview" class="mb-8">
-      <div class="flex items-center gap-2">
-        <BaseInput 
-          v-model="newReviewContent"
-          type="text" 
-          placeholder="댓글을 작성해주세요" 
-          class="border-gray-300 focus:border-blue-600 focus:outline-none shadow-lg"
-        />
-        <BaseButton 
-          type="submit" 
-          class="bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors px-6 py-2 flex-1" 
-          :img-src="send"
-          img-alt="작성"
-          value="작성" 
-        />
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div class="flex-1">
+          <BaseInput
+            v-model="newReviewContent"
+            type="text"
+            msg="댓글을 작성해주세요"
+          />
+        </div>
+
+        <div class="sm:w-28">
+          <BaseButton
+            type="submit"
+            :img-src="send"
+            img-alt="작성"
+            value="작성"
+            class-name="bg-blue-600 border-blue-600 text-white hover:bg-blue-700 transition-colors"
+          />
+        </div>
       </div>
     </form>
 
     <div class="space-y-4">
-     <p v-if="!book?.reviews?.length" class="text-center text-gray-500 py-8">
-  아직 댓글이 없습니다.
-</p>
+      <p v-if="!book?.reviews?.length" class="text-center text-gray-500 py-10">
+        아직 댓글이 없습니다.
+      </p>
 
-<div v-else class="space-y-3">
-  <div v-for="r in book.reviews" :key="r.id" class="border rounded-lg p-4">
+      <div v-else class="space-y-3">
+        <div v-for="r in book.reviews" :key="r.id" class="bg-gray-50 border border-gray-200 rounded-xl p-4">
           <div class="flex items-center justify-between mb-2">
-            <p class="text-gray-800">{{ r.user_nickname || r.user || '사용자' }}</p>
+            <p class="text-gray-900 font-medium">{{ r.user_nickname || r.user || '사용자' }}</p>
             <p class="text-gray-500 text-sm">{{ formatDate(r.created_at) }}</p>
           </div>
-          <p class="text-gray-700">{{ r.content }}</p>
+          <p class="text-gray-700 leading-relaxed">{{ r.content }}</p>
         </div>
       </div>
     </div>
   </div>
 </div>
+</main>
 
 </template>
 

@@ -1,8 +1,8 @@
 <template>
-  <div class="p-8">
+  <div class="p-6 sm:p-8">
   <!-- Header -->
   <div class="flex justify-between items-center mb-6">
-    <h2 class="text-gray-800">회원정보</h2>
+    <h2 class="text-gray-900 text-xl font-semibold">회원정보</h2>
 
     <button
       @click="goProfileUpdate"
@@ -36,13 +36,13 @@
   <!-- User Info -->
   <div class="space-y-6">
     <div v-for="row in infoRows" :key="row.label" class="flex items-start gap-4">
-      <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+      <div class="w-12 h-12 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
         <img :src="row.imgSrc" :alt="row.imgAlt" class="w-6 h-6" />
       </div>
 
       <div class="flex-1">
         <label class="block text-sm text-gray-600">{{ row.label }}</label>
-        <p class="text-gray-800 py-2">{{ row.value || '-' }}</p>
+        <p class="text-gray-900 py-2">{{ row.value || '-' }}</p>
       </div>
     </div>
   </div>

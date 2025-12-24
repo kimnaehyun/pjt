@@ -1,13 +1,15 @@
 <template>
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-      <!-- 상단 프로필 영역 -->
-      <ProfileHeader />
+  <main class="min-h-screen bg-gray-50">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div class="bg-white border border-gray-200 rounded-2xl shadow-md overflow-hidden">
+        <!-- 상단 프로필 영역 -->
+        <ProfileHeader />
 
-      <!-- 회원 정보 영역 -->
-      <RouterView />
+        <!-- 회원 정보 영역 -->
+        <RouterView />
+      </div>
     </div>
-  </div>
+  </main>
 </template>
 
 <script setup>

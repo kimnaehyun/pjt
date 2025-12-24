@@ -1,6 +1,9 @@
 <template>
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 class="mb-6 text-gray-800 text-2xl font-semibold">{{ title }}</h1>
+    <main class="min-h-screen bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <div class="mb-6">
+                <h1 class="text-gray-900 text-2xl sm:text-3xl font-semibold tracking-tight">{{ title }}</h1>
+            </div>
 
         <div v-if="isLoading" class="flex items-center justify-center py-12">
             <div class="fidget text-blue-600" role="status" aria-label="불러오는 중">
@@ -11,14 +14,21 @@
             </div>
         </div>
 
-        <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            <BookCard
-                v-for="book in books"
-                :key="book.id"
-                :book="book"
-            />
+            <div v-else>
+                <p v-if="books.length === 0" class="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 text-center text-gray-600">
+                    검색 결과가 없습니다.
+                </p>
+
+                <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    <BookCard
+                        v-for="book in books"
+                        :key="book.id"
+                        :book="book"
+                    />
+                </div>
+            </div>
         </div>
-    </div>
+    </main>
 </template>
 
 <script setup>

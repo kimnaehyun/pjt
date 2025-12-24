@@ -1,58 +1,11 @@
 <template>
 <nav class="bg-white shadow-md sticky top-0 z-50">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex justify-between items-center h-16 gap-4">
+    <div class="flex justify-between items-center gap-4 py-3">
 
-      <!-- Left: hamburger + logo -->
-      <div class="flex items-center gap-3">
-        <!-- Genre hamburger -->
-        <div class="relative">
-          <button
-          v-if="authStore.isAuthenticated"
-            type="button"
-            class="p-2 rounded-lg text-gray-700 hover:text-blue-600 transition-colors"
-            aria-label="장르 메뉴"
-            @click="toggleGenreMenu"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              width="24"
-              height="24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-              class="w-6 h-6"
-            >
-              <path d="M4 6h16" />
-              <path d="M4 12h16" />
-              <path d="M4 18h16" />
-            </svg>
-          </button>
-
-          <div
-            v-if="isGenreMenuOpen"
-            class="absolute left-0 top-full mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden"
-            role="menu"
-          >
-            <button
-              v-for="g in genres"
-              :key="g.id"
-              type="button"
-              class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              role="menuitem"
-              @click="goGenre(g.id)"
-            >
-              {{ g.name }}
-            </button>
-          </div>
-        </div>
-
+      <!-- Left: logo -->
+      <div class="flex items-center gap-3 shrink-0">
         <!-- Logo -->
-       <!-- Logo -->
 <button
   type="button"
   @click="goLogo"
@@ -81,9 +34,24 @@
          a3 3 0 0 0-3-3z"
     />
   </svg>
-  <span class="text-blue-600">북스토어</span>
+  <span class="text-blue-600">북핏</span>
 </button>
 
+      </div>
+
+      <!-- Center: genres (expanded) -->
+      <div v-if="authStore.isAuthenticated" class="flex-1 overflow-x-auto">
+        <div class="flex items-center gap-2 whitespace-nowrap">
+          <button
+            v-for="g in genres"
+            :key="g.id"
+            type="button"
+            class="px-3 py-2 rounded-full border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors"
+            @click="goGenre(g.id)"
+          >
+            {{ g.name }}
+          </button>
+        </div>
       </div>
 
       <!-- Right menu -->
@@ -159,8 +127,6 @@
   const authStore = useAuthStore()
 
   const genres = ref([])
-  const selectedGenreId = ref('')
-  const isGenreMenuOpen = ref(false)
 
   const fetchGenres = async () => {
     try {
@@ -179,21 +145,9 @@ const goLogo = () => {
   }
 }
 
-  const onGenreChange = () => {
-    const id = String(selectedGenreId.value || '').trim()
-    if (!id) return
-    router.push({ name: 'genreResult', params: { genreId: id } })
-  }
-
-  const toggleGenreMenu = () => {
-    isGenreMenuOpen.value = !isGenreMenuOpen.value
-  }
-
   const goGenre = (id) => {
     const genreId = String(id || '').trim()
     if (!genreId) return
-    selectedGenreId.value = genreId
-    isGenreMenuOpen.value = false
     router.push({ name: 'genreResult', params: { genreId } })
   }
 
