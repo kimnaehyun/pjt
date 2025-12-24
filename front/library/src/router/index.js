@@ -81,7 +81,7 @@ router.beforeEach((to, from) => {
   // 로그인 필요 페이지 정의
   const protectedRoutes = ['main', 'bookDetail', 'genreResult', 'aiSearchResult'];
 
-  if (protectedRoutes.includes(to.name) && !accountStore.isLogin) {
+  if (protectedRoutes.includes(to.name) && !accountStore.isAuthenticated) {
     window.alert('로그인이 필요합니다');
     // 랜딩으로 이동 + 로그인 모달 열기
     accountStore.showLoginModal = true; // store에서 모달 상태 관리한다고 가정
@@ -89,7 +89,7 @@ router.beforeEach((to, from) => {
   }
 
   // 이미 로그인 상태에서 랜딩 접근 제한
-  if (to.name === 'landing' && accountStore.isLogin) {
+  if (to.name === 'landing' && accountStore.isAuthenticated) {
     window.alert('이미 로그인이 되어있습니다');
     return { name: 'main' };
   }
