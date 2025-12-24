@@ -310,8 +310,8 @@ const toggleRead = async () => {
 
 const connectWS = () => {
   try {
-    const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl = `${wsProtocol}//${location.host}/ws/books/${id.value}/`
+    const base = import.meta.env.VITE_WS_BASE_URL
+    const wsUrl = `${base}/ws/books/${id.value}/`
     ws = new WebSocket(wsUrl)
 
     ws.onmessage = e => {
