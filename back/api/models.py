@@ -16,9 +16,10 @@ class Genre(models.Model):
         return self.name
 
 class Author(models.Model):
-    name      = models.CharField(max_length=200, unique=True)
+    name = models.TextField(unique=True)
+
     def __str__(self):
-        return self.name
+        return self.name[:50]  # admin에서 너무 길어지는 거 방지
 
 class Book(models.Model):
     isbn                     = models.CharField(max_length=20, unique=True)
