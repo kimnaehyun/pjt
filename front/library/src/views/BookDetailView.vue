@@ -317,7 +317,7 @@ const connectWS = () => {
   console.warn('Book ID is missing. WS connection skipped.')
   return
 }
-const base = import.meta.env.VITE_WS_BASE_URL
+const base = "wss://port-0-pjt-mjik7t1z410777eb.sel3.cloudtype.app"
 const wsUrl = `${base}/main/books/${id.value}/`
 console.log('WS URL:', wsUrl)
 ws = new WebSocket(wsUrl)
