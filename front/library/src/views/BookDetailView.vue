@@ -309,13 +309,13 @@ const toggleRead = async () => {
 /* ================= WebSocket ================= */
 
 const connectWS = () => {
-  console.log(id.value);
   
   if (!id.value) return  // id가 없으면 연결하지 않음
 
   try {
     const base = import.meta.env.VITE_WS_BASE_URL
-    const wsUrl = `${base}/${id.value}/`
+    const wsUrl = `${base}/main/books/${id.value}/`
+    console.log('WS URL:', wsUrl)
     ws = new WebSocket(wsUrl)
 
     ws.onmessage = e => {
