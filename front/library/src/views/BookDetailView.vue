@@ -309,6 +309,8 @@ const toggleRead = async () => {
 /* ================= WebSocket ================= */
 
 const connectWS = () => {
+  if (!id.value) return  // id가 없으면 연결하지 않음
+
   try {
     const base = import.meta.env.VITE_WS_BASE_URL
     const wsUrl = `${base}/ws/books/${id.value}/`
@@ -316,25 +318,24 @@ const connectWS = () => {
 
     ws.onmessage = e => {
       const data = JSON.parse(e.data)
-
       if (data.type === 'review.created') {
         book.value.reviews.unshift(data.review)
         book.value.review_count++
       }
-
       if (data.type === 'review.deleted') {
-        book.value.reviews = book.value.reviews.filter(
-          r => r.id !== data.review_id
-        )
+        book.value.reviews = book.value.reviews.filter(r => r.id !== data.review_id)
         book.value.review_count = Math.max(0, book.value.review_count - 1)
       }
     }
 
-    ws.onclose = () => setTimeout(connectWS, 2000)
+    ws.onclose = () => {
+      if (id.value) setTimeout(connectWS, 2000)
+    }
   } catch (e) {
     console.error(e)
   }
 }
+
 
 /* ================= lifecycle ================= */
 
@@ -349,6 +350,7 @@ onUnmounted(() => {
 })
 
 watch(id, async () => {
+  if (!id.value) return
   try { ws?.close() } catch {}
   await fetchBook()
   connectWS()
