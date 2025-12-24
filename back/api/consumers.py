@@ -27,22 +27,3 @@ class ReviewConsumer(AsyncWebsocketConsumer):
             'review_id': event.get('review_id')
         }))
 
-
-class BookConsumer(AsyncWebsocketConsumer):
-    async def connect(self):
-        self.book_id = self.scope['url_route']['kwargs'].get('book_id')
-        self.group_name = f'book_{self.book_id}'
-
-        # 그룹에 참여
-        await self.channel_layer.group_add(self.group_name, self.channel_name)
-        await self.accept()
-
-    async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.group_name, self.channel_name)
-
-    # 예: 책 정보 업데이트 이벤트
-    async def book_updated(self, event):
-        await self.send(text_data=json.dumps({
-            'type': 'book.updated',
-            'book': event.get('book')
-        }))
