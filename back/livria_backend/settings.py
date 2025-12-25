@@ -32,7 +32,6 @@ def _env(key: str, default=None, required: bool = False):
         return default
     return val
 
-SECRET_KEY = _env('SECRET_KEY', default='change-me')
 # Accept common truthy values for DEBUG
 DEBUG = str(_env('DEBUG', default='True')).lower() in ('1', 'true', 'yes')
 

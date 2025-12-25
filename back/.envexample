@@ -1,0 +1,24 @@
+# Django Settings
+DEBUG=True
+
+# Aladin API
+ALADIN_API_KEY=your_aladin_api_key_here
+ALADIN_BASE_URL=https://www.aladin.co.kr/ttb/api/ItemList.aspx
+
+# OpenAI API
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-5-mini
+OPENAI_BASE_URL=
+
+# GMS (SSAFY)
+GMS_KEY=S14P02EB09-090e40fb-1d0a-4d1f-ae48-ff5081cf631f
+
+# Upstage API
+UPSTAGE_API_KEY=your_upstage_api_key_here
+
+# PostgreSQL (Optional - defaults to SQLite if not set)
+# POSTGRES_DB=
+# POSTGRES_USER=
+# POSTGRES_PASSWORD=
+# POSTGRES_HOST=
+# POSTGRES_PORT=

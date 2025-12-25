@@ -463,11 +463,26 @@ def recommend_by_profile(request):
     gender = getattr(user, 'gender', '') or ''
     interests = getattr(user, 'interests', '') or ''
 
-    # Build prompt for OpenAI
+    # Build prompt for OpenAI - now requesting book IDs and reasons
+    # Fetch all books with relevant fields
+    books_list = Book.objects.select_related('author', 'category', 'genre').all()[:300]
+    
+    # Build book catalog for GPT
+    book_catalog = "Here are books in our database:\n"
+    book_map = {}
+    for b in books_list:
+        author_name = (b.author.name if b.author else 'Unknown') or 'Unknown'
+        description = (b.description or '')[:100]  # First 100 chars
+        book_catalog += f"{b.id}. Title: {b.title}, Author: {author_name}, Description: {description}\n"
+        book_map[b.id] = b
+    
     nonce = request.query_params.get('nonce')
     prompt = (
+        f"{book_catalog}\n"
         "You are a helpful book recommender. Given a user's profile and lists of books they've favorited and read, "
-        "suggest up to 8 book titles that this user would enjoy. Return the recommendations as a numbered list of titles only.\n\n"
+        "recommend books from the database above that this user would enjoy.\n"
+        "For each book that matches the user's preferences, return: book_id|reason.\n"
+        "Return ONLY comma-separated lines with format: book_id|reason. No other text. Maximum 8 books.\n\n"
     )
     if nonce:
         prompt += f"Nonce: {nonce}\n"
@@ -526,10 +541,10 @@ def recommend_by_profile(request):
             picked_ids = rng.sample(candidate_ids, pick_count)
             books_map = Book.objects.select_related('author', 'category', 'genre').in_bulk(picked_ids)
             picked = [books_map.get(i) for i in picked_ids if books_map.get(i) is not None]
-            return BookSerializer(picked, many=True, context={'request': request}).data
+            return [{'book': BookSerializer(b, context={'request': request}).data, 'reason': '추천 도서'} for b in picked]
 
         qs = qs.order_by('-global_recommend_count', 'id')[:8]
-        return BookSerializer(qs, many=True, context={'request': request}).data
+        return [{'book': BookSerializer(b, context={'request': request}).data, 'reason': '인기 도서'} for b in qs]
 
     if not api_key:
         return Response(_fallback_list())
@@ -545,7 +560,7 @@ def recommend_by_profile(request):
         resp = client.responses.create(
             model=model,
             input=[{'role': 'user', 'content': prompt}],
-            max_output_tokens=360,
+            max_output_tokens=500,
             reasoning={"effort": "minimal"},
             text={"verbosity": "low"},
         )
@@ -553,36 +568,39 @@ def recommend_by_profile(request):
     except Exception:
         return Response(_fallback_list())
 
-    # Parse titles from response
-    candidates = []
-    for line in text.splitlines():
-        s = line.strip()
-        if not s:
-            continue
-        s = re.sub(r'^[\d\)\.\-\s]+', '', s).strip()
-        if len(s) < 2:
-            continue
-        candidates.append(s)
-
-    # Match candidates to books in DB
-    found = []
-    # Start with excluded IDs so we never recommend already-favorited/read books.
+    # Parse response: expect lines like "123|The book matches because..."
+    results = []
     seen_ids = set(exclude_ids)
-    for title in candidates:
-        qs = Book.objects.filter(title__icontains=title)[:3]
-        if not qs.exists():
-            qs = Book.objects.filter(author__name__icontains=title)[:3]
-        for b in qs:
-            if b.id in seen_ids:
+    
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or '|' not in line:
+            continue
+        parts = line.split('|', 1)
+        try:
+            book_id = int(parts[0].strip())
+            reason = parts[1].strip() if len(parts) > 1 else '추천 도서'
+            
+            # Skip if already seen or excluded
+            if book_id in seen_ids:
                 continue
-            seen_ids.add(b.id)
-            found.append(BookSerializer(b, context={'request': request}).data)
+                
+            book = book_map.get(book_id)
+            if book:
+                seen_ids.add(book_id)
+                book_data = BookSerializer(book, context={'request': request}).data
+                results.append({
+                    'book': book_data,
+                    'reason': reason
+                })
+        except (ValueError, IndexError):
+            continue
 
-    if not found:
-        found = _fallback_list()
+    if not results:
+        results = _fallback_list()
 
-    # Frontend expects a plain list response.
-    return Response(found)
+    # Frontend expects list with book and reason
+    return Response(results)
 
 
 @api_view(['GET'])
@@ -663,6 +681,8 @@ def recommend_by_prompt(request):
 
     # Parse response: expect lines like "123|The book matches because..."
     results = []
+    seen_book_ids = set()  # Track seen book IDs to prevent duplicates
+    
     for line in text.splitlines():
         line = line.strip()
         if not line or '|' not in line:
@@ -672,8 +692,13 @@ def recommend_by_prompt(request):
             book_id = int(parts[0].strip())
             reason = parts[1].strip() if len(parts) > 1 else ''
             
+            # Skip if already seen
+            if book_id in seen_book_ids:
+                continue
+                
             book = book_map.get(book_id)
             if book:
+                seen_book_ids.add(book_id)
                 book_data = BookSerializer(book, context={'request': request}).data
                 results.append({
                     'book': book_data,
