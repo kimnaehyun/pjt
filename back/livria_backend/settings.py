@@ -18,22 +18,46 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
-SECRET_KEY = os.getenv('SECRET_KEY')
-DEBUG      = os.getenv('DEBUG', 'True') == 'True'
+# Conservative environment loader: prefer explicit env values loaded from .env
+def _env(key: str, default=None, required: bool = False):
+    """Return environment variable value.
+
+    - Uses os.environ (populated by load_dotenv) rather than os.getenv shortcut.
+    - If `required` is True and the variable is missing or empty, raise RuntimeError.
+    """
+    val = os.environ.get(key)
+    if val is None or val == '':
+        if required:
+            raise RuntimeError(f"Missing required environment variable: {key}")
+        return default
+    return val
+
+SECRET_KEY = _env('SECRET_KEY', default='change-me')
+# Accept common truthy values for DEBUG
+DEBUG = str(_env('DEBUG', default='True')).lower() in ('1', 'true', 'yes')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-ALADIN_API_KEY    = os.getenv('ALADIN_API_KEY')
-ALADIN_BASE_URL   = os.getenv('ALADIN_BASE_URL')
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-# Model default:
-# - If using SSAFY GMS (GMS_KEY is set) and OPENAI_MODEL is not provided, default to gpt-4.1.
-# - Otherwise keep the project's default.
-OPENAI_MODEL = os.getenv('OPENAI_MODEL') or ('gpt-4.1' if os.getenv('GMS_KEY') else 'gpt-5-mini')
-OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL')
-GMS_KEY = os.getenv('GMS_KEY')
-UPSTAGE_API_KEY = os.getenv('UPSTAGE_API_KEY')
+ALADIN_API_KEY = _env('ALADIN_API_KEY')
+ALADIN_BASE_URL = _env('ALADIN_BASE_URL')
+
+# OpenAI / GMS
+OPENAI_API_KEY = _env('OPENAI_API_KEY')
+GMS_KEY = _env('GMS_KEY')
+UPSTAGE_API_KEY = _env('UPSTAGE_API_KEY')
+
+# Model default: prefer an explicit OPENAI_MODEL; if missing, prefer gpt-4.1 when using GMS proxy.
+OPENAI_MODEL = _env('OPENAI_MODEL', default=('gpt-4.1' if GMS_KEY else 'gpt-5-mini'))
+
+# Resolve OPENAI_BASE_URL following the GMS quickstart behavior:
+# 1) If OPENAI_BASE_URL is explicitly provided, use it.
+# 2) If not provided and GMS_KEY is present, use the SSAFY GMS proxy base URL.
+# 3) Otherwise leave as None (client libraries will use default OpenAI endpoints).
+OPENAI_BASE_URL = _env('OPENAI_BASE_URL')
+if not OPENAI_BASE_URL:
+    if GMS_KEY:
+        OPENAI_BASE_URL = 'https://gms.ssafy.io/gmsapi/api.openai.com/v1'
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 

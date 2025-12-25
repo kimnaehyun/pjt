@@ -2,17 +2,25 @@
     <main class="min-h-screen bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             <div class="mb-6">
-                <h1 class="text-gray-900 text-2xl sm:text-3xl font-semibold tracking-tight">{{ title }}</h1>
+                <h1 class="text-gray-900 text-2xl sm:text-3xl font-semibold tracking-tight mb-4">{{ title }}</h1>
+                <form @submit.prevent="submitSearch" class="mt-4">
+                    <div class="flex items-center gap-3">
+                        <BaseInput v-model="keyword" type="text" msg="책 제목, 저자, 카테고리로 검색" />
+                        <div class="sm:w-40">
+                            <BaseButton type="submit" value="검색" class-name="h-12 rounded-full bg-blue-600 border-blue-600 text-white hover:bg-blue-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600/30 transition-colors"/>
+                        </div>
+                    </div>
+                </form>
             </div>
 
-        <div v-if="isLoading" class="flex items-center justify-center py-12">
-            <div class="fidget text-blue-600" role="status" aria-label="불러오는 중">
-                <span class="fidget__center" />
-                <span class="fidget__dot fidget__dot--1" />
-                <span class="fidget__dot fidget__dot--2" />
-                <span class="fidget__dot fidget__dot--3" />
+            <div v-if="isLoading" class="flex items-center justify-center py-12">
+                <div class="fidget text-blue-600" role="status" aria-label="불러오는 중">
+                    <span class="fidget__center" />
+                    <span class="fidget__dot fidget__dot--1" />
+                    <span class="fidget__dot fidget__dot--2" />
+                    <span class="fidget__dot fidget__dot--3" />
+                </div>
             </div>
-        </div>
 
             <div v-else>
                 <p v-if="books.length === 0" class="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 text-center text-gray-600">
@@ -33,17 +41,26 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import BookCard from '@/components/BookCard.vue'
 import { bookAPI, metaAPI } from '@/api'
+import BaseInput from '@/components/BaseInput.vue'
+import BaseButton from '@/components/BaseButton.vue'
 
 const route = useRoute()
 const search = computed(() => route.params.search)
 const genreId = computed(() => route.params.genreId)
-const aiPrompt = computed(() => route.query.prompt)
 
 const genreName = ref('')
 const genreNameById = ref({})
+const router = useRouter()
+
+// Keep a local keyword so the input stays visible and editable on results page
+const keyword = ref(String(search.value || '').trim())
+
+watch(search, (v) => {
+    keyword.value = String(v || '').trim()
+})
 
 const ensureGenresLoaded = async () => {
     const cached = genreNameById.value
@@ -63,8 +80,6 @@ const ensureGenresLoaded = async () => {
 }
 
 const title = computed(() => {
-    const p = String(aiPrompt.value || '').trim()
-    if (p) return `"${p}" AI 검색 결과`
     const g = String(genreId.value || '').trim()
     if (g) {
         const name = String(genreName.value || '').trim()
@@ -80,13 +95,6 @@ const isLoading = ref(false)
 const fetchBooks = async () => {
         isLoading.value = true
         try {
-            const p = String(aiPrompt.value || '').trim()
-            if (p) {
-                genreName.value = ''
-                const response = await bookAPI.aiSearch({ prompt: p, nonce: Date.now() })
-                books.value = Array.isArray(response.data) ? response.data : []
-                return
-            }
             const g = String(genreId.value || '').trim()
             if (g) {
                 await ensureGenresLoaded()
@@ -110,9 +118,15 @@ onMounted(() => {
     fetchBooks()
 })
 
-watch([search, genreId, aiPrompt], () => {
+watch([search, genreId], () => {
     fetchBooks()
 })
+
+const submitSearch = () => {
+    const q = String(keyword.value || '').trim()
+    if (!q) return
+    router.push({ name: 'searchResult', params: { search: q } })
+}
 </script>
 
 <style lang="scss" scoped>

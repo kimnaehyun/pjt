@@ -7,7 +7,7 @@ from .views import (
     GenreViewSet,
     ReviewViewSet
 )
-from .views import recommend_by_profile
+from .views import recommend_by_profile, recommend_by_prompt
 # music react endpoint removed
 
 router = DefaultRouter()
@@ -20,4 +20,5 @@ router.register(r'reviews',     ReviewViewSet)
 urlpatterns = [
     path('', include(router.urls)),
     path('recommendations/me/', recommend_by_profile, name='recommend_by_profile'),
+    path('recommendations/by-prompt/', recommend_by_prompt, name='recommend_by_prompt'),
 ]

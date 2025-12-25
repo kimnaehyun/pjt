@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import LandingView from "@/views/LandingView.vue";
 import MainView from "@/views/MainView.vue";
 import SearchResultsView from "@/views/SearchResultsView.vue";
+import AIRecommendationView from "@/views/AIRecommendationView.vue";
 import BookDetailView from "@/views/BookDetailView.vue";
 import SignUpView from "@/views/SignUpView.vue";
 import ProfileView from "@/views/ProfileView.vue";
@@ -22,6 +23,11 @@ const router = createRouter({
       path: "/main",
       name: "main",
       component: MainView,
+    },
+    {
+      path: "/main/ai-recommendation",
+      name: "aiRecommendation",
+      component: AIRecommendationView,
     },
     {
       path: "/main/books/:id",

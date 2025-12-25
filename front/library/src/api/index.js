@@ -50,7 +50,8 @@ export const bookAPI = {
   getTopRecommended: () => api.get('/books/top-recommended/'),
   getAgeBased: (age) => api.get('/books/age-based/', { params: { age } }),
   getSimilar: (id) => api.get(`/books/${id}/similar/`),
-  aiSearch: (params) => api.get('/books/ai-search/', { params })
+  aiSearch: (params) => api.get('/books/ai-search/', { params }),
+  recommendByPrompt: (params) => api.get('/recommendations/by-prompt/', { params })
 }
 
 // 리뷰 API

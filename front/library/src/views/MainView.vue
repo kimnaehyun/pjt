@@ -22,30 +22,18 @@
 
               <button
                 type="button"
-                class="group h-12 rounded-full p-px shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-600/30"
-                :class="isAiMode
-                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 shadow-md'
-                  : 'bg-gradient-to-r from-gray-200 to-gray-300 hover:from-blue-500 hover:via-indigo-500 hover:to-sky-500'"
-                :aria-pressed="isAiMode"
+                class="h-12 rounded-full px-5 font-semibold text-sm tracking-tight transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600/40 border-2 border-blue-600 text-blue-600 bg-white hover:bg-blue-50 hover:shadow-md"
                 @click="aiSearch"
               >
-                <span
-                  class="flex h-full w-full items-center justify-center rounded-full px-5 text-sm font-semibold tracking-tight transition"
-                  :class="isAiMode
-                    ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 text-white'
-                    : 'bg-white text-gray-800 group-hover:bg-gray-50'"
-                >
-                  AI 검색
-                </span>
+                AI 추천
               </button>
 
-              <div class="sm:w-40">
-                <BaseButton
-                  type="submit"
-                  value="검색"
-                  class-name="h-12 rounded-full bg-blue-600 border-blue-600 text-white hover:bg-blue-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600/30 transition-colors"
-                />
-              </div>
+              <button
+                type="submit"
+                class="h-12 rounded-full px-6 font-semibold text-sm tracking-tight transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600/40 bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md"
+              >
+                검색
+              </button>
             </div>
           </form>
         </div>
@@ -62,6 +50,7 @@
       </div>
 
       <div v-else class="space-y-10">
+        <!-- 카테고리 섹션 -->
         <section
           v-for="cat in categories"
           :key="cat.id"
@@ -128,7 +117,6 @@ import { bookAPI, metaAPI } from '@/api';
 
 const router = useRouter();
 const keyword = ref('')
-const isAiMode = ref(false)
 
 const isLoading = ref(true)
 const categories = ref([])
@@ -142,30 +130,22 @@ const visibleSlots = ref({}) // { [categoryId]: number }
 
 const search = () => {
   if (!keyword.value?.trim()) return
-
-  if (isAiMode.value) {
-    const prompt = String(keyword.value || '').trim()
-    router.push({ name: 'aiSearchResult', query: { prompt } })
-    return
-  }
-
+  // Always perform a normal search on submit.
   router.push({
-  name: 'searchResult',
-  params: {
-    search: keyword.value,
-  },
-});
+    name: 'searchResult',
+    params: {
+      search: keyword.value,
+    },
+  })
 }
 
 const aiSearch = () => {
   const prompt = String(keyword.value || '').trim()
-  // If there's a prompt, run AI search immediately.
-  if (prompt) {
-    router.push({ name: 'aiSearchResult', query: { prompt } })
-    return
-  }
-  // Otherwise, treat as a mode toggle (activate/deactivate AI mode).
-  isAiMode.value = !isAiMode.value
+  // Navigate to AI recommendation page with prompt
+  router.push({ 
+    name: 'aiRecommendation', 
+    query: { prompt: prompt || '' } 
+  })
 }
 
 const fetchBooks = async () => {

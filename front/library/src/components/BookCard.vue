@@ -3,7 +3,7 @@
      class="group"
      :to="{ name: 'bookDetail', params: { id: book.id } }"
  >
-    <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+    <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 border border-gray-200 hover:border-indigo-400">
                 <div class="aspect-[4/5] bg-gray-200 overflow-hidden">
             <img
               v-if="book?.cover_url"
@@ -13,8 +13,8 @@
             >
         </div>
         <div class="p-4">
-            <div class="text-sm text-blue-600 mb-1">{{ book?.category_name || book?.category?.name || '' }}</div>
-            <h3 class="mb-2 line-clamp-1 group-hover:text-blue-600 transition-colors">{{ book?.title || '' }}</h3>
+            <div class="text-xs text-indigo-600 mb-1">{{ book?.category_name || book?.category?.name || '' }}</div>
+            <h3 class="mb-2 line-clamp-1 group-hover:text-blue-600 text-lg font-semibold transition-colors">{{ book?.title || '' }}</h3>
             <p class="text-gray-600 text-sm mb-2 line-clamp-1">{{ book?.author_name || book?.author?.name || '' }}</p>
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1">
@@ -34,7 +34,7 @@
                                         </svg>
                     <span class="text-sm">{{ book?.review_count ?? '' }}</span>
                 </div>
-                <span class="text-blue-600">{{ book?.genre_name || book?.genre?.name || '' }}</span>
+                <span class="text-gray-800 font-semibold">{{ book?.genre_name || book?.genre?.name || '' }}</span>
             </div>
         </div>
     </div>

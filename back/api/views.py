@@ -117,6 +117,47 @@ class BookViewSet(viewsets.ModelViewSet):
             ai_prompt += f"Nonce: {nonce}\n"
         ai_prompt += f"User request: {prompt_in}\n"
 
+        # Fetch all books from DB and ask GPT to select matching ones
+        try:
+            books_list = Book.objects.select_related('author', 'category', 'genre').all()[:200]
+            
+            # Build book catalog for GPT
+            book_catalog = "Here are books in our database:\n"
+            for b in books_list:
+                author_name = (b.author.name if b.author else 'Unknown') or 'Unknown'
+                book_catalog += f"{b.id}. Title: {b.title}, Author: {author_name}\n"
+            
+            gpt_prompt = (
+                f"{book_catalog}\n"
+                f"User request: {prompt_in}\n"
+                f"Return ONLY the book IDs (as integers, comma-separated) that match the user request. No other text."
+            )
+
+            try:
+                resp = client.responses.create(
+                    model=model,
+                    input=[{'role': 'user', 'content': gpt_prompt}],
+                    max_output_tokens=500,
+                    reasoning={"effort": "minimal"},
+                    text={"verbosity": "low"},
+                )
+                id_text = (getattr(resp, 'output_text', '') or '').strip()
+                
+                if id_text:
+                    # Parse comma-separated IDs
+                    id_matches = re.findall(r'\d+', id_text)
+                    book_ids = [int(bid) for bid in id_matches]
+                    
+                    if book_ids:
+                        qs = Book.objects.filter(id__in=book_ids).select_related('author', 'category', 'genre')
+                        data = BookSerializer(qs, many=True, context={'request': request}).data
+                        if data:
+                            return Response(data)
+            except Exception:
+                pass
+        except Exception:
+            pass
+
         try:
             resp = client.responses.create(
                 model=model,
@@ -161,6 +202,61 @@ class BookViewSet(viewsets.ModelViewSet):
 
         qs = base_qs.filter(q).distinct().order_by('-global_recommend_count', 'id')[:40]
         data = BookSerializer(qs, many=True, context={'request': request}).data
+
+        # If DB returned no results, try a lightweight Aladin ItemSearch fallback
+        if not data:
+            try:
+                from api.services.aladin import fetch_aladin_books
+
+                found = []
+                for t in terms[:3]:
+                    try:
+                        items = fetch_aladin_books('ItemSearch', max_results=10, start=1, Query=t)
+                    except Exception:
+                        items = []
+                    for it in items:
+                        # basic ISBN normalization
+                        isbn = (it.get('isbn13') or '').strip()
+                        if not isbn:
+                            raw = (it.get('isbn') or '')
+                            m = re.search(r"\b(\d{13})\b", raw)
+                            if m:
+                                isbn = m.group(1)
+                            else:
+                                m2 = re.search(r"\b(\d{9}[\dXx])\b", raw)
+                                if m2:
+                                    isbn = m2.group(1)
+                        if not isbn:
+                            continue
+
+                        title = (it.get('title') or '').strip()
+                        author_name = (it.get('author') or '').strip()
+                        publisher = (it.get('publisher') or '').strip()
+                        cover = (it.get('cover') or '').strip()
+                        desc = (it.get('description') or '').strip() or ''
+
+                        try:
+                            author, _ = Author.objects.get_or_create(name=author_name or 'Unknown')
+                            book, created = Book.objects.get_or_create(
+                                isbn=isbn,
+                                defaults={
+                                    'title': title or isbn,
+                                    'author': author,
+                                    'publisher': publisher,
+                                    'cover_url': cover,
+                                    'description': desc,
+                                }
+                            )
+                            found.append(book)
+                        except Exception:
+                            # ignore DB errors in fallback
+                            continue
+
+                if found:
+                    data = BookSerializer(found[:40], many=True, context={'request': request}).data
+            except Exception:
+                pass
+
         return Response(data)
 
     @action(detail=True, methods=['get'], permission_classes=[AllowAny], url_path='similar')
@@ -487,4 +583,115 @@ def recommend_by_profile(request):
 
     # Frontend expects a plain list response.
     return Response(found)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def recommend_by_prompt(request):
+    """
+    Recommend books from DB based on a user-provided prompt.
+    Returns a list with each book having: { book, reason }
+    """
+    prompt_in = request.query_params.get('prompt', '').strip()
+    if not prompt_in:
+        return Response([], status=status.HTTP_400_BAD_REQUEST)
+
+    # Fetch all books with relevant fields
+    books_list = Book.objects.select_related('author', 'category', 'genre').all()[:300]
+    
+    # Build book catalog for GPT
+    book_catalog = "Here are books in our database:\n"
+    book_map = {}
+    for b in books_list:
+        author_name = (b.author.name if b.author else 'Unknown') or 'Unknown'
+        description = (b.description or '')[:100]  # First 100 chars
+        book_catalog += f"{b.id}. Title: {b.title}, Author: {author_name}, Description: {description}\n"
+        book_map[b.id] = b
+
+    nonce = request.query_params.get('nonce')
+    
+    # Build prompt for OpenAI
+    gpt_prompt = (
+        f"{book_catalog}\n"
+        f"User request: {prompt_in}\n"
+        f"For each book that matches the user request, return: ID | Reason.\n"
+        f"Return ONLY comma-separated lines with format: book_id|reason. No other text. Maximum 10 books."
+    )
+    if nonce:
+        gpt_prompt += f"\nNonce: {nonce}"
+
+    model = getattr(settings, 'OPENAI_MODEL', None) or 'gpt-5-mini'
+    openai_api_key = getattr(settings, 'OPENAI_API_KEY', None)
+    gms_key = getattr(settings, 'GMS_KEY', None)
+    base_url = getattr(settings, 'OPENAI_BASE_URL', None)
+
+    DEFAULT_GMS_BASE_URL = 'https://gms.ssafy.io/gmsapi/api.openai.com/v1'
+
+    if not base_url:
+        if gms_key:
+            base_url = DEFAULT_GMS_BASE_URL
+        elif openai_api_key and not _looks_like_openai_key(openai_api_key):
+            base_url = DEFAULT_GMS_BASE_URL
+
+    if base_url == DEFAULT_GMS_BASE_URL:
+        api_key = gms_key or openai_api_key
+    else:
+        api_key = openai_api_key or gms_key
+
+    # Fallback: return empty list if no API configured
+    if not api_key:
+        return Response([])
+
+    try:
+        from openai import OpenAI
+    except ModuleNotFoundError:
+        return Response([])
+
+    client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
+
+    try:
+        resp = client.responses.create(
+            model=model,
+            input=[{'role': 'user', 'content': gpt_prompt}],
+            max_output_tokens=500,
+            reasoning={"effort": "minimal"},
+            text={"verbosity": "low"},
+        )
+        text = (getattr(resp, 'output_text', '') or '').strip()
+    except Exception:
+        return Response([])
+
+    # Parse response: expect lines like "123|The book matches because..."
+    results = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or '|' not in line:
+            continue
+        parts = line.split('|', 1)
+        try:
+            book_id = int(parts[0].strip())
+            reason = parts[1].strip() if len(parts) > 1 else ''
+            
+            book = book_map.get(book_id)
+            if book:
+                book_data = BookSerializer(book, context={'request': request}).data
+                results.append({
+                    'book': book_data,
+                    'reason': reason
+                })
+        except (ValueError, IndexError):
+            continue
+
+    # If no results, return random 5 books
+    if not results:
+        import random
+        random_books = random.sample(list(books_list), min(5, len(books_list))) if books_list else []
+        for book in random_books:
+            book_data = BookSerializer(book, context={'request': request}).data
+            results.append({
+                'book': book_data,
+                'reason': '추천 도서'
+            })
+
+    return Response(results)
 
