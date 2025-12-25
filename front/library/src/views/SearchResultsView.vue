@@ -5,10 +5,19 @@
                 <h1 class="text-gray-900 text-2xl sm:text-3xl font-semibold tracking-tight mb-4">{{ title }}</h1>
                 <form @submit.prevent="submitSearch" class="mt-4">
                     <div class="flex items-center gap-3">
-                        <BaseInput v-model="keyword" type="text" msg="책 제목, 저자, 카테고리로 검색" />
+                        <BaseInput v-model="keyword" type="text" :msg="searchPlaceholder" />
                         <div class="sm:w-40">
                             <BaseButton type="submit" value="검색" class-name="h-12 rounded-full bg-blue-600 border-blue-600 text-white hover:bg-blue-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600/30 transition-colors"/>
                         </div>
+                        <!-- 장르 내 검색 초기화 버튼 -->
+                        <button
+                            v-if="isSearchingInGenre"
+                            type="button"
+                            @click="clearGenreSearch"
+                            class="h-12 px-4 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors text-sm font-medium whitespace-nowrap"
+                        >
+                            검색 초기화
+                        </button>
                     </div>
                 </form>
             </div>
@@ -58,6 +67,23 @@ const router = useRouter()
 // Keep a local keyword so the input stays visible and editable on results page
 const keyword = ref(String(search.value || '').trim())
 
+// 검색창 placeholder 동적 변경
+const searchPlaceholder = computed(() => {
+    const g = String(genreId.value || '').trim()
+    if (g) {
+        const name = String(genreName.value || '').trim()
+        return name ? `${name} 내에서 검색` : '이 장르 내에서 검색'
+    }
+    return '책 제목, 저자, 카테고리로 검색'
+})
+
+// 장르 내 검색 초기화
+const clearGenreSearch = () => {
+    keyword.value = ''
+    isSearchingInGenre.value = false
+    fetchBooks()
+}
+
 watch(search, (v) => {
     keyword.value = String(v || '').trim()
 })
@@ -81,13 +107,21 @@ const ensureGenresLoaded = async () => {
 
 const title = computed(() => {
     const g = String(genreId.value || '').trim()
+    const q = String(keyword.value || '').trim()
+    
     if (g) {
         const name = String(genreName.value || '').trim()
+        // 장르 내에서 검색 중인 경우
+        if (q && isSearchingInGenre.value) {
+            return name ? `${name} - "${q}" 검색 결과` : `장르별 도서 - "${q}" 검색 결과`
+        }
         return name ? name : '장르별 도서'
     }
-    const q = String(search.value || '').trim()
     return `"${q}" 검색 결과`
 })
+
+// 장르 내 검색 여부를 추적
+const isSearchingInGenre = ref(false)
 
 const books = ref([])
 const isLoading = ref(false)
@@ -96,15 +130,24 @@ const fetchBooks = async () => {
         isLoading.value = true
         try {
             const g = String(genreId.value || '').trim()
+            const q = String(keyword.value || '').trim()
+            
             if (g) {
                 await ensureGenresLoaded()
                 genreName.value = genreNameById.value?.[g] || ''
-                const response = await bookAPI.getBooks({ genre: g })
+                
+                // 장르 내에서 검색어가 있으면 함께 검색
+                const params = { genre: g }
+                if (q && isSearchingInGenre.value) {
+                    params.search = q
+                }
+                
+                const response = await bookAPI.getBooks(params)
                 books.value = Array.isArray(response.data) ? response.data : []
                 return
             }
             genreName.value = ''
-            const q = String(search.value || '').trim()
+            isSearchingInGenre.value = false
             const response = await bookAPI.getBooks({ search: q })
             books.value = Array.isArray(response.data) ? response.data : []
         } catch (e) {
@@ -119,13 +162,26 @@ onMounted(() => {
 })
 
 watch([search, genreId], () => {
+    // route 파라미터가 바뀌면 장르 내 검색 상태 초기화
+    isSearchingInGenre.value = false
+    keyword.value = String(search.value || '').trim()
     fetchBooks()
 })
 
 const submitSearch = () => {
     const q = String(keyword.value || '').trim()
     if (!q) return
-    router.push({ name: 'searchResult', params: { search: q } })
+    
+    const g = String(genreId.value || '').trim()
+    
+    // 장르 페이지에 있으면 해당 장르 내에서 검색
+    if (g) {
+        isSearchingInGenre.value = true
+        fetchBooks()
+    } else {
+        // 일반 검색 페이지면 전체 검색
+        router.push({ name: 'searchResult', params: { search: q } })
+    }
 }
 </script>
 

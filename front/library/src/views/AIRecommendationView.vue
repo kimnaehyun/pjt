@@ -28,16 +28,33 @@
         </p>
 
         <div v-else class="space-y-4">
-          <div v-for="item in recommendedBooks" :key="item.book.id" class="flex items-start gap-4 bg-white border border-gray-200 rounded-2xl shadow-sm p-4">
-            <div class="w-20 h-28 flex-shrink-0">
-              <BookCard :book="item.book" />
+          <RouterLink 
+            v-for="item in recommendedBooks" 
+            :key="item.book.id" 
+            :to="{ name: 'bookDetail', params: { id: item.book.id } }"
+            class="flex items-start gap-5 bg-white border border-gray-200 rounded-2xl shadow-sm p-5 hover:shadow-md hover:border-blue-300 transition-all duration-200 cursor-pointer"
+          >
+            <!-- 책 표지 이미지 -->
+            <div class="w-24 h-36 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 shadow-sm">
+              <img 
+                v-if="item.book.cover_url" 
+                :src="item.book.cover_url" 
+                :alt="item.book.title"
+                class="w-full h-full object-cover"
+              />
+              <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
             </div>
-            <div class="flex-1">
-              <h3 class="font-semibold text-gray-900">{{ item.book.title }}</h3>
-              <p class="text-sm text-gray-600 mt-1">{{ item.book.author?.name }}</p>
-              <p class="text-sm text-blue-600 mt-2 italic">{{ item.reason }}</p>
+            <!-- 책 정보 -->
+            <div class="flex-1 min-w-0 py-1">
+              <h3 class="font-semibold text-gray-900 text-lg leading-snug line-clamp-2">{{ item.book.title }}</h3>
+              <p class="text-sm text-gray-500 mt-1">{{ item.book.author?.name || item.book.author_name || '작자 미상' }}</p>
+              <p class="text-sm text-blue-600 mt-3 leading-relaxed line-clamp-3">{{ item.reason }}</p>
             </div>
-          </div>
+          </RouterLink>
         </div>
       </div>
     </div>
@@ -46,8 +63,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import BookCard from '@/components/BookCard.vue'
+import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { bookAPI } from '@/api'
 import BaseInput from '@/components/BaseInput.vue'
 import BaseButton from '@/components/BaseButton.vue'
